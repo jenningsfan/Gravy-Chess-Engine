@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace Gravy
 {
-    internal class Uci
+    internal class Gravy
     {
-        public Uci()
+        public Gravy()
         {
 
         }
