@@ -19,7 +19,7 @@ namespace Gravy
             {
                 case "uci":
                     DoUciCommand();
-                    break;
+                    break; 
                 case "isready":
                     DoIsReadyCommand();
                     break;
