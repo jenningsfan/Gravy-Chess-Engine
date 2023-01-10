@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Gera.Chess" Version="1.0.3" />
     <PackageReference Include="Rudzoft.ChessLib" Version="0.0.3" />
   </ItemGroup>
 
