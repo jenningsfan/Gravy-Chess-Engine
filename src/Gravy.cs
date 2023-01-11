@@ -10,15 +10,20 @@ namespace Gravy
     internal class Gravy
     {
         private ChessBoard board;
+        private Random random;
+        private int promotionPiece;
 
         public Gravy()
         {
-            
+            random = new Random(4);
+
+            StartNewGame();
         }
         
         public void StartNewGame()
         {
             ChessBoard board = new ChessBoard();
+            board.OnPromotePawn += DoPromotion;
         }
 
         public void SetPosition(string fen, string[] moves)
@@ -31,16 +36,45 @@ namespace Gravy
             }
         }
 
-        public void ChooseMove()
+        public string ChooseMove()
         {
             Move[] moves = board.Moves();
-            board.Move(moves[Random.Shared.Next(moves.Length)]);
+            Move move = moves[random.Next(moves.Length)];
+            board.Move(move);
+
+            string moveString = move.OriginalPosition.ToString() + move.NewPosition.ToString();
+            if (move.Parameter != null)
+            {
+                moveString += move.San.Last();
+            }
+
+            return moveString;
         }
 
         public void DoMove(string move)
         {
-            board.Move(new Move(move[0..1], move[2..3]));
+            board.Move(new Move(move[0..2], move[2..4]));
+
+            switch (move.Last())
+            {
+                case 'Q':
+                    promotionPiece = 1;
+                    break;
+                case 'R':
+                    promotionPiece = 2;
+                    break;
+                case 'B':
+                    promotionPiece = 3;
+                    break;
+                case 'K':
+                    promotionPiece = 4;
+                    break;
+            }
         }
-        
+
+        private void DoPromotion(object sender, PromotionEventArgs e)
+        {
+            e.PromotionResult = (PromotionType)promotionPiece;
+        }
     }
 }

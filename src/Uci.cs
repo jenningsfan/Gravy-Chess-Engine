@@ -8,20 +8,33 @@ namespace Gravy
 {
     internal class Uci
     {
+        Gravy engine;
         public Uci()
         {
-            // Nothing in init method yet
+            engine = new Gravy();
         }
 
         public int HandleCommand(string command)
         {
-            switch (command)
+            switch (command.Split(" ")[0])
             {
                 case "uci":
                     DoUciCommand();
                     break;
                 case "isready":
                     DoIsReadyCommand();
+                    break;
+                case "ucinewgame":
+                    DoUciNewGameCommand();
+                    break;
+                case "position":
+                    DoSetPosition(command.Split(" ")[1..]);
+                    break;
+                case "go":
+                    DoChooseMove(command.Split(" ")[1..]);
+                    break;
+                case "stop":
+                    DoStop();
                     break;
                 case "quit":
                     return -1;
@@ -48,6 +61,38 @@ namespace Gravy
         private void DoIsReadyCommand()
         {
             SendCommand("readyok");
+        }
+
+        private void DoUciNewGameCommand()
+        {
+            engine.StartNewGame();
+        }
+
+        private void DoSetPosition(string[] args)
+        {
+            if (args[0] == "startpos")
+            {
+                args[0] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+            }
+
+            if (args.Length == 1)
+            {
+                engine.SetPosition(args[0], Array.Empty<string>());
+            }
+            else
+            {
+                engine.SetPosition(args[0], args[2..]);
+            }
+        }
+
+        private void DoChooseMove(string[] args)
+        {
+            Console.WriteLine($"bestmove {engine.ChooseMove()}");
+        }
+
+        private void DoStop()
+        {
+            // When gravy is runs in a different task kill. for now do nothing.
         }
     }
 }
