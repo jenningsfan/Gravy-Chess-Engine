@@ -39,16 +39,115 @@ namespace Gravy
         public string ChooseMove()
         {
             Move[] moves = board.Moves();
-            Move move = moves[random.Next(moves.Length)];
+            Move move = MiniMax(board, 2, board.Turn == PieceColor.White).Item1;
+
             board.Move(move);
 
-            string moveString = move.OriginalPosition.ToString() + move.NewPosition.ToString();
-            if (move.Parameter != null)
+            return GetMoveString(move);
+        }
+
+        private Tuple<Move, double> MiniMax(ChessBoard board, int depth, bool whiteMax)
+        {
+            Move[] moves = board.Moves();
+
+            if (board.IsEndGame || depth <= 0)
             {
-                moveString += move.San.Last();
+                return Tuple.Create((Move)null, EvaluateBoard(board));
             }
 
-            return moveString;
+            if (whiteMax)
+            {
+                double maxEval = int.MinValue;
+                Move bestMove = null;
+
+                foreach (Move move in moves)
+                {
+                    board.Move(move);
+
+                    double eval = MiniMax(board, depth - 1, false).Item2;
+                    if (eval > maxEval)
+                    {
+                        maxEval = eval;
+                        bestMove = move;
+                    }
+
+                    board.Cancel();
+                }
+
+                return Tuple.Create(bestMove, maxEval);
+            }
+            else
+            {
+                double minEval = int.MaxValue;
+                Move bestMove = null;
+
+                foreach (Move move in moves)
+                {
+                    board.Move(move);
+
+                    double eval = MiniMax(board, depth - 1, true).Item2;
+                    if (eval < minEval)
+                    {
+                        minEval = eval;
+                        bestMove = move;
+                    }
+
+                    board.Cancel();
+                }
+
+                return Tuple.Create(bestMove, minEval);
+            }
+        }
+
+        private double EvaluateBoard(ChessBoard board)
+        {
+            double evaluation = 0;
+
+            foreach (Piece piece in board.CapturedWhite)
+            {
+                switch (piece.Type.AsChar)
+                {
+                    case 'p':
+                        evaluation -= 1;
+                        break;
+                    case 'k':
+                        evaluation -= 3.5;
+                        break;
+                    case 'b':
+                        evaluation -= 3.5;
+                        break;
+                    case 'r':
+                        evaluation -= 5.25;
+                        break;
+                    case 'q':
+                        evaluation -= 10;
+                        break;
+                }
+            }
+
+            foreach (Piece piece in board.CapturedBlack)
+            {
+                switch (piece.Type.AsChar)
+                {
+                    case 'p':
+                        evaluation += 1;
+                        break;
+                    case 'k':
+                        evaluation += 3.5;
+                        break;
+                    case 'b':
+                        evaluation += 3.5;
+                        break;
+                    case 'r':
+                        evaluation += 5.25;
+                        break;
+                    case 'q':
+                        evaluation += 10;
+                        break;
+                }
+            }
+
+            return evaluation;
         }
 
         public void DoMove(string move)
@@ -75,6 +174,17 @@ namespace Gravy
         private void DoPromotion(object sender, PromotionEventArgs e)
         {
             e.PromotionResult = (PromotionType)promotionPiece;
+        }
+
+        private string GetMoveString(Move move)
+        {
+            string moveString = move.OriginalPosition.ToString() + move.NewPosition.ToString();
+            if (move.Parameter != null)
+            {
+                moveString += move.San.Last();
+            }
+
+            return moveString;
         }
     }
 }
