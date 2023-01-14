@@ -39,6 +39,8 @@ namespace Gravy
             Move[] moves = board.Moves();
             Move bestMove = null;
 
+            int depth = 2;
+
             if (board.Turn == PieceColor.White)
             {
                 double maxEval = int.MinValue;
@@ -48,7 +50,7 @@ namespace Gravy
                     promotionPiece = -1;
                     board.Move(move);
 
-                    double eval = MiniMax(board, 2, false);
+                    double eval = MiniMax(board, depth, int.MinValue, int.MaxValue, false);
                     if (eval > maxEval)
                     {
                         bestMove = move;
@@ -66,7 +68,7 @@ namespace Gravy
                     promotionPiece = -1;
                     board.Move(move);
 
-                    double eval = MiniMax(board, 2, false);
+                    double eval = MiniMax(board, depth, int.MinValue, int.MaxValue, false);
                     if (eval < minEval)
                     {
                         bestMove = move;
@@ -81,7 +83,7 @@ namespace Gravy
             return GetMoveString(bestMove);
         }
 
-        private double MiniMax(ChessBoard board, int depth, bool whiteMax)
+        private double MiniMax(ChessBoard board, int depth, double alpha, double beta, bool whiteMax)
         {
             Move[] moves = board.Moves();
 
@@ -129,8 +131,16 @@ namespace Gravy
                     promotionPiece = -1;
                     board.Move(move);
 
-                    maxEval = Math.Max(maxEval, MiniMax(board, depth - 1, false));
+                    double eval = MiniMax(board, depth - 1, alpha, beta, false);
+                    maxEval = Math.Max(maxEval, eval);
+                    alpha = Math.Max(alpha, eval);
+
                     board.Cancel();
+
+                    if (beta <= alpha)
+                    {
+                        break;
+                    } 
                 }
 
                 return maxEval;
@@ -144,8 +154,16 @@ namespace Gravy
                     promotionPiece = -1;
                     board.Move(move);
 
-                    minEval = Math.Min(minEval, MiniMax(board, depth - 1, true));
+                    double eval = MiniMax(board, depth - 1, alpha, beta, true);
+                    minEval = Math.Min(minEval, eval);
+                    beta = Math.Min(beta, eval);
+
                     board.Cancel();
+
+                    if (beta <= alpha)
+                    {
+                        break;
+                    }  
                 }
 
                 return minEval;
