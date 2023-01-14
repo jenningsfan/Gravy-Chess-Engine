@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
 namespace Gravy
 {
@@ -70,18 +71,37 @@ namespace Gravy
 
         private void DoSetPosition(string[] args)
         {
+            string fen = "";
+
             if (args[0] == "startpos")
             {
-                args[0] = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-            }
-
-            if (args.Length == 1)
-            {
-                engine.SetPosition(args[0], Array.Empty<string>());
+                fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
             }
             else
             {
-                engine.SetPosition(args[0], args[2..]);
+                for (int i = 1; i < args.Length; i++)
+                {
+                    if (args[i] == "moves")
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        fen += args[i] + " ";
+                    }
+                }
+                fen = fen[..^1];
+            }
+
+            int movesIndex = Array.IndexOf(args, "moves");
+
+            if (movesIndex != -1)
+            {
+                engine.SetPosition(fen, args[(movesIndex + 1)..]);
+            }
+            else
+            {
+                engine.SetPosition(fen, new string[0] { });
             }
         }
 

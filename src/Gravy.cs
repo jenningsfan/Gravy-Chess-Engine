@@ -10,13 +10,10 @@ namespace Gravy
     internal class Gravy
     {
         private ChessBoard board;
-        private Random random;
         private int promotionPiece;
 
         public Gravy()
         {
-            random = new Random(4);
-
             StartNewGame();
         }
         
@@ -24,6 +21,7 @@ namespace Gravy
         {
             ChessBoard board = new ChessBoard();
             board.OnPromotePawn += DoPromotion;
+            //board.OnPromotePawn += (sender, e) => e.PromotionResult = PromotionType.ToKnight;
         }
 
         public void SetPosition(string fen, string[] moves)
@@ -39,63 +37,118 @@ namespace Gravy
         public string ChooseMove()
         {
             Move[] moves = board.Moves();
-            Move move = MiniMax(board, 2, board.Turn == PieceColor.White).Item1;
+            Move bestMove = null;
 
-            board.Move(move);
+            if (board.Turn == PieceColor.White)
+            {
+                double maxEval = int.MinValue;
 
-            return GetMoveString(move);
+                foreach (Move move in moves)
+                {
+                    promotionPiece = -1;
+                    board.Move(move);
+
+                    double eval = MiniMax(board, 2, false);
+                    if (eval > maxEval)
+                    {
+                        bestMove = move;
+                        maxEval = eval;
+                    }
+                    board.Cancel();
+                }
+            }
+            else
+            {
+                double minEval = int.MaxValue;
+
+                foreach (Move move in moves)
+                {
+                    promotionPiece = -1;
+                    board.Move(move);
+
+                    double eval = MiniMax(board, 2, false);
+                    if (eval < minEval)
+                    {
+                        bestMove = move;
+                        minEval = eval;
+                    }
+                    board.Cancel();
+                }
+            }
+
+            board.Move(bestMove);
+
+            return GetMoveString(bestMove);
         }
 
-        private Tuple<Move, double> MiniMax(ChessBoard board, int depth, bool whiteMax)
+        private double MiniMax(ChessBoard board, int depth, bool whiteMax)
         {
             Move[] moves = board.Moves();
 
-            if (board.IsEndGame || depth <= 0)
+            if (depth <= 0)
             {
-                return Tuple.Create((Move)null, EvaluateBoard(board));
+                return EvaluateBoard(board);
+            }
+
+            if (board.IsEndGame)
+            {
+                if (board.EndGame.WonSide == PieceColor.White)
+                {
+                    if (whiteMax)
+                    {
+                        return double.MaxValue;
+                    }
+                    else
+                    {
+                        return double.MinValue;
+                    }
+                }
+                else if (board.EndGame.WonSide == PieceColor.Black)
+                {
+                    if (whiteMax)
+                    {
+                        return double.MinValue;
+                    }
+                    else
+                    {
+                        return double.MaxValue;
+                    }
+                }
+                else
+                {
+                    return 0;
+                }
             }
 
             if (whiteMax)
             {
                 double maxEval = int.MinValue;
-                Move bestMove = null;
 
                 foreach (Move move in moves)
                 {
+                    promotionPiece = -1;
                     board.Move(move);
 
-                    double eval = MiniMax(board, depth - 1, false).Item2;
-                    if (eval > maxEval)
-                    {
-                        maxEval = eval;
-                        bestMove = move;
-                    }
-
+                    maxEval = Math.Max(maxEval, MiniMax(board, depth - 1, false));
                     board.Cancel();
                 }
 
-                return Tuple.Create(bestMove, maxEval);
+                return maxEval;
             }
             else
             {
                 double minEval = int.MaxValue;
-                Move bestMove = null;
 
                 foreach (Move move in moves)
                 {
+                    promotionPiece = -1;
                     board.Move(move);
 
-                    double eval = MiniMax(board, depth - 1, true).Item2;
-                    if (eval < minEval)
-                    {
-                        minEval = eval;
-                        bestMove = move;
-                    }
-
+                    minEval = Math.Min(minEval, MiniMax(board, depth - 1, true));
                     board.Cancel();
                 }
 
-                return Tuple.Create(bestMove, minEval);
+                return minEval;
             }
         }
 
@@ -110,7 +163,7 @@ namespace Gravy
                     case 'p':
                         evaluation -= 1;
                         break;
-                    case 'k':
+                    case 'n':
                         evaluation -= 3.5;
                         break;
                     case 'b':
@@ -132,7 +185,7 @@ namespace Gravy
                     case 'p':
                         evaluation += 1;
                         break;
-                    case 'k':
+                    case 'n':
                         evaluation += 3.5;
                         break;
                     case 'b':
@@ -152,36 +205,44 @@ namespace Gravy
 
         public void DoMove(string move)
         {
-            board.Move(new Move(move[0..2], move[2..4]));
-
-            switch (move.Last())
+            switch (move.ToLower().Last())
             {
-                case 'Q':
+                case 'q':
                     promotionPiece = 1;
                     break;
-                case 'R':
+                case 'r':
                     promotionPiece = 2;
                     break;
-                case 'B':
+                case 'b':
                     promotionPiece = 3;
                     break;
-                case 'K':
+                case 'n':
                     promotionPiece = 4;
                     break;
             }
+
+            board.Move(new Move(move[0..2], move[2..4]));
         }
 
         private void DoPromotion(object sender, PromotionEventArgs e)
         {
-            e.PromotionResult = (PromotionType)promotionPiece;
+            Console.WriteLine($"promo: {promotionPiece}");
+            if (promotionPiece != -1) e.PromotionResult = (PromotionType)promotionPiece;
         }
 
         private string GetMoveString(Move move)
         {
             string moveString = move.OriginalPosition.ToString() + move.NewPosition.ToString();
+            
             if (move.Parameter != null)
             {
-                moveString += move.San.Last();
+                char lastChar = move.San.Last();
+
+                if (lastChar == 'Q' || lastChar == 'R' || lastChar == 'B' || lastChar == 'N')
+                {
+                    Console.WriteLine($"last: {lastChar}");
+                    moveString += char.ToLower(lastChar);
+                }
             }
 
             return moveString;
