@@ -37,59 +37,20 @@ namespace Gravy
         public string ChooseMove()
         {
             Move[] moves = board.Moves();
-            Move bestMove = null;
-
-            int depth = 2;
-
-            if (board.Turn == PieceColor.White)
-            {
-                double maxEval = int.MinValue;
-
-                foreach (Move move in moves)
-                {
-                    promotionPiece = -1;
-                    board.Move(move);
-
-                    double eval = MiniMax(board, depth, int.MinValue, int.MaxValue, false);
-                    if (eval > maxEval)
-                    {
-                        bestMove = move;
-                        maxEval = eval;
-                    }
-                    board.Cancel();
-                }
-            }
-            else
-            {
-                double minEval = int.MaxValue;
-
-                foreach (Move move in moves)
-                {
-                    promotionPiece = -1;
-                    board.Move(move);
-
-                    double eval = MiniMax(board, depth, int.MinValue, int.MaxValue, false);
-                    if (eval < minEval)
-                    {
-                        bestMove = move;
-                        minEval = eval;
-                    }
-                    board.Cancel();
-                }
-            }
+            Move bestMove = MiniMax(board, 2, int.MinValue, int.MaxValue, board.Turn == PieceColor.White).Item1;
 
             board.Move(bestMove);
 
             return GetMoveString(bestMove);
         }
 
-        private double MiniMax(ChessBoard board, int depth, double alpha, double beta, bool whiteMax)
+        private Tuple<Move, double> MiniMax(ChessBoard board, int depth, double alpha, double beta, bool whiteMax)
         {
             Move[] moves = board.Moves();
 
             if (depth <= 0)
             {
-                return EvaluateBoard(board);
+                return Tuple.Create((Move)null, EvaluateBoard(board));
             }
 
             if (board.IsEndGame)
@@ -98,32 +59,33 @@ namespace Gravy
                 {
                     if (whiteMax)
                     {
-                        return double.MaxValue;
+                        return Tuple.Create((Move)null, double.MaxValue);
                     }
                     else
                     {
-                        return double.MinValue;
+                        return Tuple.Create((Move)null, double.MinValue);
                     }
                 }
                 else if (board.EndGame.WonSide == PieceColor.Black)
                 {
                     if (whiteMax)
                     {
-                        return double.MinValue;
+                        return Tuple.Create((Move)null, double.MinValue);
                     }
                     else
                     {
-                        return double.MaxValue;
+                        return Tuple.Create((Move)null, double.MaxValue);
                     }
                 }
                 else
                 {
-                    return 0;
+                    return Tuple.Create((Move)null, 0.0);
                 }
             }
 
             if (whiteMax)
             {
+                Move bestMove = null;
                 double maxEval = int.MinValue;
 
                 foreach (Move move in moves)
@@ -131,8 +93,12 @@ namespace Gravy
                     promotionPiece = -1;
                     board.Move(move);
 
-                    double eval = MiniMax(board, depth - 1, alpha, beta, false);
-                    maxEval = Math.Max(maxEval, eval);
+                    double eval = MiniMax(board, depth - 1, alpha, beta, false).Item2;
+                    if (eval > maxEval)
+                    {
+                        eval = maxEval;
+                        bestMove = move;
+                    }
                     alpha = Math.Max(alpha, eval);
 
                     board.Cancel();
@@ -143,10 +109,11 @@ namespace Gravy
                     } 
                 }
 
-                return maxEval;
+                return Tuple.Create(bestMove, maxEval);
             }
             else
             {
+                Move bestMove = null;
                 double minEval = int.MaxValue;
 
                 foreach (Move move in moves)
@@ -154,8 +121,12 @@ namespace Gravy
                     promotionPiece = -1;
                     board.Move(move);
 
-                    double eval = MiniMax(board, depth - 1, alpha, beta, true);
-                    minEval = Math.Min(minEval, eval);
+                    double eval = MiniMax(board, depth - 1, alpha, beta, true).Item2;
+                    if (eval < minEval)
+                    {
+                        eval = minEval;
+                        bestMove = move;
+                    }
                     beta = Math.Min(beta, eval);
 
                     board.Cancel();
@@ -166,7 +137,7 @@ namespace Gravy
                     }  
                 }
 
-                return minEval;
+                return Tuple.Create(bestMove, minEval);
             }
         }
 
