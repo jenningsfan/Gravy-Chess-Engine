@@ -5,7 +5,6 @@ namespace Gravy
     internal class Gravy
     {
         private ChessBoard board;
-        private int promotionPiece;
         private double[][] pieceValues = new double[][]// P, R, N, B, Q, K
         {
             new double[] { 1, 5.25, 3.5, 3.5, 10, 0 },
@@ -20,8 +19,6 @@ namespace Gravy
         public void StartNewGame()
         {
             ChessBoard board = new ChessBoard();
-            board.OnPromotePawn += DoPromotion;
-            //board.OnPromotePawn += (sender, e) => e.PromotionResult = PromotionType.ToKnight;
         }
 
         public void SetPosition(string fen, string[] moves)
@@ -36,14 +33,14 @@ namespace Gravy
 
         public string ChooseMove()
         {
-            Move bestMove = MiniMax(board, 2, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1).Item1;
+            Move bestMove = NegaMax(board, 2, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1).Item1;
 
             board.Move(bestMove);
 
             return GetMoveString(bestMove);
         }
 
-        private Tuple<Move, double> MiniMax(ChessBoard board, int depth, double alpha, double beta, int colour)
+        private Tuple<Move, double> NegaMax(ChessBoard board, int depth, double alpha, double beta, int colour)
         {
             Move[] moves = board.Moves();
 
@@ -55,12 +52,11 @@ namespace Gravy
             Move bestMove = null;
             double maxEval = int.MinValue;
 
-            foreach (Move move in moves)
+            foreach (Move move in OrderMoves(moves, colour))
             {
-                promotionPiece = -1;
                 board.Move(move);
 
-                double eval = -MiniMax(board, depth - 1, -beta, -alpha, -colour).Item2;
+                double eval = -NegaMax(board, depth - 1, -beta, -alpha, -colour).Item2;
                 if (eval > maxEval)
                 {
                     eval = maxEval;
@@ -72,11 +68,32 @@ namespace Gravy
 
                 if (alpha >= beta)
                 {
-                    //break;
+                    break;
                 }
             }
 
             return Tuple.Create(bestMove, maxEval);
+        }
+
+        private List<Move> OrderMoves(Move[] moves, int colour)
+        {
+            PriorityQueue<Move, double> queue = new PriorityQueue<Move, double>(Comparer<double>.Create((x, y) => y.CompareTo(x)));
+
+            foreach (Move move in moves)
+            {
+                board.Move(move);
+                queue.Enqueue(move, colour * EvaluateBoard(board));
+                board.Cancel();
+            }
+
+            List<Move> orderedMoves = new();
+
+            while (queue.Count > 0)
+            {
+                orderedMoves.Add(queue.Dequeue());
+            }
+
+            return orderedMoves;
         }
 
         private double EvaluateBoard(ChessBoard board)
@@ -109,26 +126,20 @@ namespace Gravy
             switch (move.ToLower().Last())
             {
                 case 'q':
-                    promotionPiece = 1;
+                    board.OnPromotePawn += (sender, e) => e.PromotionResult = PromotionType.ToQueen;
                     break;
                 case 'r':
-                    promotionPiece = 2;
+                    board.OnPromotePawn += (sender, e) => e.PromotionResult = PromotionType.ToRook;
                     break;
                 case 'b':
-                    promotionPiece = 3;
+                    board.OnPromotePawn += (sender, e) => e.PromotionResult = PromotionType.ToBishop;
                     break;
                 case 'n':
-                    promotionPiece = 4;
+                    board.OnPromotePawn += (sender, e) => e.PromotionResult = PromotionType.ToKnight;
                     break;
             }
-
+            
             board.Move(new Move(move[0..2], move[2..4]));
-        }
-
-        private void DoPromotion(object sender, PromotionEventArgs e)
-        {
-            Console.WriteLine($"promo: {promotionPiece}");
-            if (promotionPiece != -1) e.PromotionResult = (PromotionType)promotionPiece;
         }
 
         private string GetMoveString(Move move)
