@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
+using System.Diagnostics;
 
 namespace Gravy
 {
@@ -107,8 +108,54 @@ namespace Gravy
 
         private void DoChooseMove(string[] args)
         {
-            Console.WriteLine($"bestmove {engine.ChooseMove()}");
+            string bestMove = "0000";
+            int maxTime = 10000;    // 10 seconds
+
+            if (args[0] == "movetime")
+            {
+                maxTime = Convert.ToInt32(args[1]);
+            }
+            else if (args.Contains("wtime") || args.Contains("btime"))
+            {
+                if (engine.IsWhite) maxTime = Convert.ToInt32(args[Array.IndexOf(args, "wtime") + 1]);
+                if (!engine.IsWhite) maxTime = Convert.ToInt32(args[Array.IndexOf(args, "btime") + 1]);
+
+                maxTime /= 100;
+            }
+
+            var cts = new CancellationTokenSource();
+            Stopwatch timer = new Stopwatch();
+            timer.Start();
+
+            int depth = 0;
+
+            while (true)
+            {
+                depth++;
+
+                var task = engine.ChooseMove(depth, cts.Token);
+                if (timer.ElapsedMilliseconds > maxTime)
+                {
+                    cts.Cancel();
+                    break;
+                }
+                try
+                {
+                    bestMove = task.Result;
+                }
+                catch (AggregateException ex) when (ex.InnerExceptions.All(e => e is TaskCanceledException))
+                {
+                    Console.WriteLine("Calculation was cancelled");
+                    break;
+                }
+            }
+            timer.Stop();
+
+            engine.DoMove(bestMove);
+
+            Console.WriteLine($"bestmove {bestMove}");
         }
+
 
         private void DoStop()
         {
