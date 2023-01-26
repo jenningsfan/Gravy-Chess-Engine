@@ -1,4 +1,4 @@
-﻿
+﻿using System.Diagnostics;
 using Chess;
 
 namespace Gravy;
@@ -7,7 +7,12 @@ using TranspositionKey = Tuple<int, int, int>; // Key, depth, score
 
 internal class Gravy
 {
-    public bool IsWhite;
+    public bool IsWhite { get { return board.Turn == PieceColor.White; } }
+
+    public int nodesSearched;
+    private Stopwatch timer;
+    private long maxTime;
+    private bool outOfTime;
 
     private ChessBoard board;
     private double[][] pieceValues = new double[][]// P, R, N, B, Q, K
@@ -38,20 +43,24 @@ internal class Gravy
         }
     }
 
-    public async Task<string> ChooseMove(int depth, CancellationToken token)
+    public async Task<Tuple<bool, string>> ChooseMove(int depth, long time)
     {
         return await Task.Run(() =>
         {
-            if (token.IsCancellationRequested)
-            {
-                token.ThrowIfCancellationRequested();
-            }
+            nodesSearched = 0;
+            maxTime = time;
+            outOfTime = false;
+
+            timer = new Stopwatch();
+            timer.Start();
 
             Move bestMove = NegaMax(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1).Item1;
             //board.Move(bestMove);
 
-            return GetMoveString(bestMove);
-        }, token);
+            timer.Stop();
+
+            return Tuple.Create(outOfTime, GetMoveString(bestMove));
+        });
     }
 
     private Tuple<Move, double> NegaMax(ChessBoard board, int depth, double alpha, double beta, int colour)
@@ -60,7 +69,7 @@ internal class Gravy
 
         if (depth <= 0 || board.IsEndGame)
         {
-            return Tuple.Create((Move)null, colour * EvaluateBoard(board));
+            return Tuple.Create((Move)null, colour * EvaluateBoard());
         }
 
         Move bestMove = null;
@@ -68,12 +77,23 @@ internal class Gravy
 
         foreach (Move move in OrderMoves(moves, colour))
         {
+            nodesSearched++;
+
+            if (nodesSearched % 1024 == 0 || outOfTime)
+            {
+                if (timer.ElapsedMilliseconds > maxTime || outOfTime)
+                {
+                    outOfTime = true;
+                    break;
+                }
+            }
+
             board.Move(move);
 
             double eval = -NegaMax(board, depth - 1, -beta, -alpha, -colour).Item2;
             if (eval > maxEval)
             {
-                eval = maxEval;
+                maxEval = eval;
                 bestMove = move;
             }
             alpha = Math.Max(alpha, eval);
@@ -96,7 +116,7 @@ internal class Gravy
         foreach (Move move in moves)
         {
             board.Move(move);
-            queue.Enqueue(move, colour * EvaluateBoard(board));
+            queue.Enqueue(move, colour * EvaluateBoard());
             board.Cancel();
         }
 
@@ -110,7 +130,7 @@ internal class Gravy
         return orderedMoves;
     }
 
-    private double EvaluateBoard(ChessBoard board)
+    public double EvaluateBoard()
     {
         double evaluation = 0;
 
@@ -166,7 +186,6 @@ internal class Gravy
 
             if (lastChar == 'Q' || lastChar == 'R' || lastChar == 'B' || lastChar == 'N')
             {
-                Console.WriteLine($"last: {lastChar}");
                 moveString += char.ToLower(lastChar);
             }
         }

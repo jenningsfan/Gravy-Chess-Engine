@@ -38,6 +38,9 @@ namespace Gravy
                 case "stop":
                     DoStop();
                     break;
+                case "eval":
+                    Console.WriteLine(engine.EvaluateBoard());
+                    break;
                 case "quit":
                     return -1;
                 default:
@@ -109,11 +112,11 @@ namespace Gravy
         private void DoChooseMove(string[] args)
         {
             string bestMove = "0000";
-            int maxTime = 10000;    // 10 seconds
+            long maxTime = 10000;    // 10 seconds
 
             if (args[0] == "movetime")
             {
-                maxTime = Convert.ToInt32(args[1]);
+                maxTime = (long)(Convert.ToInt32(args[1]) * 0.9);   // shorten time so there is time for transmission etc.
             }
             else if (args.Contains("wtime") || args.Contains("btime"))
             {
@@ -123,29 +126,27 @@ namespace Gravy
                 maxTime /= 100;
             }
 
-            var cts = new CancellationTokenSource();
             Stopwatch timer = new Stopwatch();
             timer.Start();
 
             int depth = 0;
+            int maxDepth = int.MaxValue;
 
-            while (true)
+            if (args.Contains("depth"))
+            {
+                maxDepth = Convert.ToInt32(args[Array.IndexOf(args, "depth") + 1]);
+            }
+
+            while (depth < maxDepth)
             {
                 depth++;
 
-                var task = engine.ChooseMove(depth, cts.Token);
+                var task = engine.ChooseMove(depth, maxTime - timer.ElapsedMilliseconds);
+
+                if (!task.Result.Item1) bestMove = task.Result.Item2;
+
                 if (timer.ElapsedMilliseconds > maxTime)
                 {
-                    cts.Cancel();
-                    break;
-                }
-                try
-                {
-                    bestMove = task.Result;
-                }
-                catch (AggregateException ex) when (ex.InnerExceptions.All(e => e is TaskCanceledException))
-                {
-                    Console.WriteLine("Calculation was cancelled");
                     break;
                 }
             }
