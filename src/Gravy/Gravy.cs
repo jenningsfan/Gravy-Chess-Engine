@@ -157,27 +157,33 @@ internal class Gravy
 
     public void DoMove(string move)
     {
+        PromotionType promotion = PromotionType.Default;
+
         switch (move.ToLower().Last())
         {
             case 'q':
-                board.OnPromotePawn += (sender, e) => e.PromotionResult = PromotionType.ToQueen;
+                promotion = PromotionType.ToQueen;
                 break;
             case 'r':
-                board.OnPromotePawn += (sender, e) => e.PromotionResult = PromotionType.ToRook;
+                promotion = PromotionType.ToRook;
                 break;
             case 'b':
-                board.OnPromotePawn += (sender, e) => e.PromotionResult = PromotionType.ToBishop;
+                promotion = PromotionType.ToBishop;
                 break;
             case 'n':
-                board.OnPromotePawn += (sender, e) => e.PromotionResult = PromotionType.ToKnight;
+                promotion = PromotionType.ToKnight;
                 break;
         }
+
+        board.OnPromotePawn += (sender, e) => e.PromotionResult = promotion;
 
         board.Move(new Move(move[0..2], move[2..4]));
     }
 
     private string GetMoveString(Move move)
     {
+        if (move is null) return "0000";
+
         string moveString = move.OriginalPosition.ToString() + move.NewPosition.ToString();
 
         if (move.Parameter != null)
