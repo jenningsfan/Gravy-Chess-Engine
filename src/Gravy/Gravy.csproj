@@ -10,11 +10,14 @@
 
   <ItemGroup>
     <PackageReference Include="Gera.Chess" Version="1.0.3" />
-    <PackageReference Include="Rudzoft.ChessLib" Version="0.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cosette.Polyglot\Cosette.Polyglot.csproj" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="XCOPY /Y /R &quot;$(SolutionDir)src\bin\$(ConfigurationName)\net6.0\*&quot; &quot;$(SolutionDir)lichess-bot\engines\bin\&quot;" />
+    <Exec Command="START XCOPY /Y /R &quot;$(SolutionDir)src\Gravy\bin\$(ConfigurationName)\net6.0\*&quot; &quot;$(SolutionDir)lichess-bot\engines\bin\&quot;" />
   </Target>
 
 </Project>

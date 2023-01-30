@@ -1,6 +1,9 @@
 ﻿using System.Diagnostics;
 using Chess;
 
+using Cosette.Polyglot;
+using Cosette.Polyglot.Book;
+
 namespace Gravy;
 
 using TranspositionKey = Tuple<int, int, int>; // Key, depth, score
@@ -15,6 +18,10 @@ internal class Gravy
     private bool outOfTime;
 
     private ChessBoard board;
+    private PolyglotBoard polyglotBoard;
+    private PolyglotBook openingBook;
+    private Random _random;
+
     private double[][] pieceValues = new double[][]// P, R, N, B, Q, K
     {
             new double[] { 1, 5.25, 3.5, 3.5, 10, 0 },
@@ -25,16 +32,42 @@ internal class Gravy
 
     public Gravy()
     {
+        string bookName = "/gm2001.bin";
+        //string bookName = "/Cerebellum3Merge.bin";
+        string firstPath = Path.GetFullPath("engines/books") + bookName;
+        string secondPath = Path.GetFullPath("../../../../../lichess-bot/engines/books") + bookName;
+
+        if (File.Exists(firstPath))
+        {
+            openingBook = new PolyglotBook(firstPath);
+        }
+        else if (File.Exists(secondPath))
+        {
+            openingBook = new PolyglotBook(secondPath);
+        }
+        else
+        {
+            throw new FileNotFoundException("The file does not exist in either path.");
+        }
+
         StartNewGame();
     }
 
     public void StartNewGame()
     {
-        ChessBoard board = new ChessBoard();
+        board = new ChessBoard();
+        polyglotBoard = new PolyglotBoard();
+
+        polyglotBoard.InitDefaultState();
+
+        _random = new Random();
     }
 
     public void SetPosition(string fen, string[] moves)
     {
+        polyglotBoard = new PolyglotBoard();
+        polyglotBoard.InitDefaultState();
+
         board = ChessBoard.LoadFromFen(fen);
 
         foreach (string move in moves)
@@ -43,24 +76,32 @@ internal class Gravy
         }
     }
 
-    public async Task<Tuple<bool, string>> ChooseMove(int depth, long time)
+    public Tuple<bool, bool, string> ChooseMove(int depth, long time)
     {
-        return await Task.Run(() =>
+        nodesSearched = 0;
+        maxTime = time;
+        outOfTime = false;
+
+        timer = new Stopwatch();
+        timer.Start();
+
+        Move bestMove;
+        Move polyglotMove = GetPolyglotMove();
+
+        if (polyglotMove is not null)
         {
-            nodesSearched = 0;
-            maxTime = time;
-            outOfTime = false;
+            bestMove = polyglotMove;
+        }
+        else
+        {
+            bestMove = NegaMax(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1).Item1;
+        }
+       
+        //board.Move(bestMove);
 
-            timer = new Stopwatch();
-            timer.Start();
+        timer.Stop();
 
-            Move bestMove = NegaMax(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1).Item1;
-            //board.Move(bestMove);
-
-            timer.Stop();
-
-            return Tuple.Create(outOfTime, GetMoveString(bestMove));
-        });
+        return Tuple.Create(outOfTime, polyglotMove is not null, GetMoveString(bestMove));
     }
 
     private Tuple<Move, double> NegaMax(ChessBoard board, int depth, double alpha, double beta, int colour)
@@ -130,6 +171,42 @@ internal class Gravy
         return orderedMoves;
     }
 
+    private Move GetPolyglotMove()
+    {
+        //Console.WriteLine($"info poly hash {polyglotBoard.CalculateHash()}");
+        //Console.WriteLine($"info poly colour {((int)polyglotBoard._colorToMove)}");
+
+        var availableMoves = openingBook.GetBookEntries(polyglotBoard.CalculateHash());
+        if (availableMoves.Count == 0)
+        {
+            return null;
+        }
+
+        availableMoves = availableMoves.OrderBy(p => p.Weight).ToList();
+        var weightSum = availableMoves.Sum(p => p.Weight);
+
+        var probabilityArray = new double[availableMoves.Count];
+        for (var availableMoveIndex = 0; availableMoveIndex < availableMoves.Count; availableMoveIndex++)
+        {
+            probabilityArray[availableMoveIndex] = (double)availableMoves[availableMoveIndex].Weight / weightSum;
+        }
+
+        var randomValue = _random.NextDouble();
+        for (var availableMoveIndex = 0; availableMoveIndex < availableMoves.Count; availableMoveIndex++)
+        {
+            if (probabilityArray[availableMoveIndex] > randomValue || availableMoveIndex == availableMoves.Count - 1)
+            {
+                PolyglotBookMove move = availableMoves[availableMoveIndex].Move;
+                string moveString = move.ToString();
+
+                Console.WriteLine($"info promo {move.PromotionPiece}");
+                return new Move(moveString[0..2], moveString[2..4]);
+            }
+        }
+
+        return null;
+    }
+
     public double EvaluateBoard()
     {
         double evaluation = 0;
@@ -147,12 +224,60 @@ internal class Gravy
 
         if (board.IsEndGame)
         {
-            if (board.EndGame.WonSide == null) evaluation = 0;
+            if (board.EndGame.WonSide is null) evaluation = 0;
             if (board.EndGame.WonSide == PieceColor.White) evaluation = int.MaxValue;
             if (board.EndGame.WonSide == PieceColor.Black) evaluation = int.MinValue;
         }
 
         return evaluation;
+    }
+
+    public ulong CalculateHash()
+    {
+        ulong result = 0;
+
+        for (short file = 0; file < 8; file++)
+        {
+            for (short rank = 0; rank < 8; rank++)
+            {
+                if (board[file, rank] is not null)
+                {
+                    int colour = board[file, rank].Color == PieceColor.White ? 1 : 0;
+                    result ^= PolyglotConstants.Keys[64 * (board[file, rank].Type.Value - 1 + colour) + 8 * rank + file];
+                }
+            }
+        }
+
+        board
+
+        if ((_castlingFlags & CastlingFlags.WhiteShort) != 0)
+        {
+            result ^= PolyglotConstants.Keys[768];
+        }
+        if ((_castlingFlags & CastlingFlags.WhiteLong) != 0)
+        {
+            result ^= PolyglotConstants.Keys[769];
+        }
+        if ((_castlingFlags & CastlingFlags.BlackShort) != 0)
+        {
+            result ^= PolyglotConstants.Keys[770];
+        }
+        if ((_castlingFlags & CastlingFlags.BlackLong) != 0)
+        {
+            result ^= PolyglotConstants.Keys[771];
+        }
+
+        if (_enPassantFile != -1)
+        {
+            result ^= PolyglotConstants.Keys[772 + _enPassantFile];
+        }
+
+        if (_colorToMove == ColorType.White)
+        {
+            result ^= PolyglotConstants.Keys[780];
+        }
+
+        return result;
     }
 
     public void DoMove(string move)
@@ -177,6 +302,8 @@ internal class Gravy
 
         board.OnPromotePawn += (sender, e) => e.PromotionResult = promotion;
 
+        //Console.WriteLine(polyglotBoard._colorToMove);
+        polyglotBoard.MakeMove(move);
         board.Move(new Move(move[0..2], move[2..4]));
     }
 
@@ -188,7 +315,7 @@ internal class Gravy
 
         if (move.Parameter != null)
         {
-            char lastChar = move.San.Last();
+            char lastChar = move.Parameter.ShortStr.Last();
 
             if (lastChar == 'Q' || lastChar == 'R' || lastChar == 'B' || lastChar == 'N')
             {

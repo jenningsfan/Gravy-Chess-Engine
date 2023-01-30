@@ -6,7 +6,7 @@ namespace Cosette.Polyglot.Book
     {
         private PieceType[,] _state;
         private CastlingFlags _castlingFlags;
-        private ColorType _colorToMove;
+        public ColorType _colorToMove;
         private int _enPassantFile;
 
         public PolyglotBoard()
