@@ -6,7 +6,7 @@ using Cosette.Polyglot.Book;
 
 namespace Gravy;
 
-using TranspositionKey = Tuple<int, int, int>; // Key, depth, score
+using TranspositionKey = Tuple<int, ulong>; // Key, depth
 
 internal class Gravy
 {
@@ -18,9 +18,9 @@ internal class Gravy
     private bool outOfTime;
 
     private ChessBoard board;
-    private PolyglotBoard polyglotBoard;
     private PolyglotBook openingBook;
     private Random _random;
+    private ulong _hash;
 
     private double[][] pieceValues = new double[][]// P, R, N, B, Q, K
     {
@@ -28,7 +28,7 @@ internal class Gravy
             new double[] { -1, -5.25, -3.5, -3.5, -10, 0 },
     };
 
-    private Dictionary<int, TranspositionKey> transpositionTable;
+    private LimitedSizeDictionary<TranspositionKey, double> _transpositionTable;
 
     public Gravy()
     {
@@ -56,17 +56,15 @@ internal class Gravy
     public void StartNewGame()
     {
         board = new ChessBoard();
-        polyglotBoard = new PolyglotBoard();
-
-        polyglotBoard.InitDefaultState();
+        InitialHash();
 
         _random = new Random();
+        _transpositionTable = new(2048);
     }
 
     public void SetPosition(string fen, string[] moves)
     {
-        polyglotBoard = new PolyglotBoard();
-        polyglotBoard.InitDefaultState();
+        InitialHash();
 
         board = ChessBoard.LoadFromFen(fen);
 
@@ -129,9 +127,23 @@ internal class Gravy
                 }
             }
 
+            UpdateHash(move);
             board.Move(move);
+            
 
-            double eval = -NegaMax(board, depth - 1, -beta, -alpha, -colour).Item2;
+            double transpositonResult = CheckTranspositon(depth);
+            double eval;
+
+            if (transpositonResult != -1)
+            {
+                eval = -NegaMax(board, depth - 1, -beta, -alpha, -colour).Item2;
+                _transpositionTable[Tuple.Create(depth, _hash)] = eval;
+            }
+            else
+            {
+                eval = transpositonResult;
+            }
+            
             if (eval > maxEval)
             {
                 maxEval = eval;
@@ -139,7 +151,9 @@ internal class Gravy
             }
             alpha = Math.Max(alpha, eval);
 
+            
             board.Cancel();
+            UpdateHash(move);
 
             if (alpha >= beta)
             {
@@ -176,7 +190,7 @@ internal class Gravy
         //Console.WriteLine($"info poly hash {polyglotBoard.CalculateHash()}");
         //Console.WriteLine($"info poly colour {((int)polyglotBoard._colorToMove)}");
 
-        var availableMoves = openingBook.GetBookEntries(polyglotBoard.CalculateHash());
+        var availableMoves = openingBook.GetBookEntries(_hash);
         if (availableMoves.Count == 0)
         {
             return null;
@@ -207,6 +221,124 @@ internal class Gravy
         return null;
     }
 
+    private void UpdateHash(Move move)
+    {
+        int colour = board[move.OriginalPosition].Color == PieceColor.White ? 1 : 0;
+
+        _hash ^= PolyglotConstants.Keys[64 * (board[move.OriginalPosition].Type.Value - 1 + colour) + 8 * move.OriginalPosition.Y + move.OriginalPosition.X];
+
+        if (move.Parameter is MovePromotion)
+        {
+            int piece = 5;  // Default to queen
+
+            switch (((MovePromotion)move.Parameter).PromotionType)
+            {
+                case PromotionType.ToRook:
+                    piece = 2;
+                    break;
+                case PromotionType.ToKnight:
+                    piece = 3;
+                    break;
+                case PromotionType.ToBishop:
+                    piece = 4;
+                    break;
+                case PromotionType.ToQueen:
+                    piece = 5;
+                    break;
+            }
+
+            _hash ^= PolyglotConstants.Keys[64 * (piece - 1 + colour) + 8 * move.NewPosition.Y + move.NewPosition.X];
+        }
+        else
+        {
+            _hash ^= PolyglotConstants.Keys[64 * (board[move.OriginalPosition].Type.Value - 1 + colour) + 8 * move.NewPosition.Y + move.NewPosition.X];
+        }
+
+        if (move.Parameter is MoveCastle)
+        {
+            CastleType castle = ((MoveCastle)move.Parameter).CastleType;
+
+            
+            if (move.Piece.Color == PieceColor.White)
+            {
+                if (castle == CastleType.King)
+                {
+                    _hash ^= PolyglotConstants.Keys[768];
+                }
+                else if (castle == CastleType.Queen)
+                {
+                    _hash ^= PolyglotConstants.Keys[769];
+                }
+            }
+
+            if (move.Piece.Color == PieceColor.Black)
+            {
+                if (castle == CastleType.King)
+                {
+                    _hash ^= PolyglotConstants.Keys[770];
+                }
+                else if (castle == CastleType.Queen)
+                {
+                    _hash ^= PolyglotConstants.Keys[771];
+                }
+            }
+        }
+
+        if (move.Parameter is MoveEnPassant)
+        {
+            MoveEnPassant moveEnPassant = (MoveEnPassant)move.Parameter;
+
+            _hash ^= PolyglotConstants.Keys[772 + moveEnPassant.CapturedPawnPosition.X];
+        }
+
+        if (move.CapturedPiece is not null)
+        {
+            _hash ^= PolyglotConstants.Keys[64 * (move.CapturedPiece.Type.Value - 1 + colour) + 8 * move.NewPosition.Y + move.NewPosition.X];
+        }
+
+        if (move.Piece.Color == PieceColor.Black)
+        {
+            _hash ^= PolyglotConstants.Keys[780];
+        }
+    }
+
+    private void InitialHash()
+    {
+        _hash = 0;
+
+        for (short file = 0; file < 8; file++)
+        {
+            for (short rank = 0; rank < 8; rank++)
+            {
+                if (board[file, rank] is not null)
+                {
+                    int colour = board[file, rank].Color == PieceColor.White ? 1 : 0;
+
+                    _hash ^= PolyglotConstants.Keys[64 * (board[file, rank].Type.Value - 1 + colour) + 8 * rank + file];
+                }
+            }
+        }
+
+        if (board.Turn == PieceColor.White)
+        {
+            _hash ^= PolyglotConstants.Keys[780];
+        }
+    }
+
+    private double CheckTranspositon(int depth)
+    {
+        TranspositionKey key = Tuple.Create(depth, _hash);
+
+        if (_transpositionTable.ContainsKey(key))
+        {
+            return _transpositionTable[key];
+        }
+        else
+        {
+            return -1;
+        }
+    }
+
     public double EvaluateBoard()
     {
         double evaluation = 0;
@@ -232,54 +364,6 @@ internal class Gravy
         return evaluation;
     }
 
-    public ulong CalculateHash()
-    {
-        ulong result = 0;
-
-        for (short file = 0; file < 8; file++)
-        {
-            for (short rank = 0; rank < 8; rank++)
-            {
-                if (board[file, rank] is not null)
-                {
-                    int colour = board[file, rank].Color == PieceColor.White ? 1 : 0;
-                    result ^= PolyglotConstants.Keys[64 * (board[file, rank].Type.Value - 1 + colour) + 8 * rank + file];
-                }
-            }
-        }
-
-        board
-
-        if ((_castlingFlags & CastlingFlags.WhiteShort) != 0)
-        {
-            result ^= PolyglotConstants.Keys[768];
-        }
-        if ((_castlingFlags & CastlingFlags.WhiteLong) != 0)
-        {
-            result ^= PolyglotConstants.Keys[769];
-        }
-        if ((_castlingFlags & CastlingFlags.BlackShort) != 0)
-        {
-            result ^= PolyglotConstants.Keys[770];
-        }
-        if ((_castlingFlags & CastlingFlags.BlackLong) != 0)
-        {
-            result ^= PolyglotConstants.Keys[771];
-        }
-
-        if (_enPassantFile != -1)
-        {
-            result ^= PolyglotConstants.Keys[772 + _enPassantFile];
-        }
-
-        if (_colorToMove == ColorType.White)
-        {
-            result ^= PolyglotConstants.Keys[780];
-        }
-
-        return result;
-    }
-
     public void DoMove(string move)
     {
         PromotionType promotion = PromotionType.Default;
@@ -302,8 +386,6 @@ internal class Gravy
 
         board.OnPromotePawn += (sender, e) => e.PromotionResult = promotion;
 
-        //Console.WriteLine(polyglotBoard._colorToMove);
-        polyglotBoard.MakeMove(move);
         board.Move(new Move(move[0..2], move[2..4]));
     }
 
