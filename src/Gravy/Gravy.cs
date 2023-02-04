@@ -33,7 +33,7 @@ internal class Gravy
     };
 
     private LimitedSizeDictionary<ulong, double> _transpositionTable;
-    private int _transpositionSize = 4096;
+    private int _transpositionSize = 20000;
 
     public Gravy()
     {
@@ -367,8 +367,8 @@ internal class Gravy
         if (board.IsEndGame)
         {
             if (board.EndGame.WonSide is null) evaluation = 0;
-            if (board.EndGame.WonSide == PieceColor.White) evaluation = int.MaxValue;
-            if (board.EndGame.WonSide == PieceColor.Black) evaluation = int.MinValue;
+            if (board.EndGame.WonSide == PieceColor.White) evaluation = int.MaxValue - 1;
+            if (board.EndGame.WonSide == PieceColor.Black) evaluation = int.MinValue + 1;
         }
 
         return evaluation;

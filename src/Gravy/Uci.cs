@@ -153,7 +153,7 @@ namespace Gravy
                     break;
                 }
 
-                if (!task.Item1) Console.WriteLine($"info depth {depth} {task.Item3}");
+                if (!task.Item1) Console.WriteLine($"info depth {depth} {task.Item4}");
             }
             timer.Stop();
 
