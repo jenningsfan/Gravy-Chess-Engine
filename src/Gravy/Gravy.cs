@@ -28,6 +28,12 @@ internal class Gravy
             new double[] { -1, -5.25, -3.5, -3.5, -10, 0 },
     };
 
+    private int[][] pieceHash = new int[][]// P, R, N, B, Q, K
+    {         
+        new int[] { 0, 6, 2, 4, 8, 10 },
+        new int[] { 1, 7, 3, 5, 9, 11 },
+    };
+
     private LimitedSizeDictionary<TranspositionKey, double> _transpositionTable;
 
     public Gravy()
@@ -64,14 +70,14 @@ internal class Gravy
 
     public void SetPosition(string fen, string[] moves)
     {
-        InitialHash();
-
         board = ChessBoard.LoadFromFen(fen);
 
         foreach (string move in moves)
         {
             DoMove(move);
         }
+
+        InitialHash();
     }
 
     public Tuple<bool, bool, string> ChooseMove(int depth, long time)
@@ -129,12 +135,13 @@ internal class Gravy
 
             UpdateHash(move);
             board.Move(move);
-            
 
-            double transpositonResult = CheckTranspositon(depth);
+
+            //double transpositonResult = CheckTranspositon(depth);
+            double transpositonResult = -1;
             double eval;
 
-            if (transpositonResult != -1)
+            if (transpositonResult == -1)
             {
                 eval = -NegaMax(board, depth - 1, -beta, -alpha, -colour).Item2;
                 _transpositionTable[Tuple.Create(depth, _hash)] = eval;
@@ -187,7 +194,7 @@ internal class Gravy
 
     private Move GetPolyglotMove()
     {
-        //Console.WriteLine($"info poly hash {polyglotBoard.CalculateHash()}");
+        //Console.WriteLine($"info poly hash {_hash}");
         //Console.WriteLine($"info poly colour {((int)polyglotBoard._colorToMove)}");
 
         var availableMoves = openingBook.GetBookEntries(_hash);
@@ -225,7 +232,7 @@ internal class Gravy
     {
         int colour = board[move.OriginalPosition].Color == PieceColor.White ? 1 : 0;
 
-        _hash ^= PolyglotConstants.Keys[64 * (board[move.OriginalPosition].Type.Value - 1 + colour) + 8 * move.OriginalPosition.Y + move.OriginalPosition.X];
+        _hash ^= PolyglotConstants.Keys[64 * (pieceHash[colour][board[move.OriginalPosition].Type.Value - 1]) + 8 * move.OriginalPosition.Y + move.OriginalPosition.X];
 
         if (move.Parameter is MovePromotion)
         {
@@ -251,7 +258,7 @@ internal class Gravy
         }
         else
         {
-            _hash ^= PolyglotConstants.Keys[64 * (board[move.OriginalPosition].Type.Value - 1 + colour) + 8 * move.NewPosition.Y + move.NewPosition.X];
+            _hash ^= PolyglotConstants.Keys[64 * (pieceHash[colour][board[move.OriginalPosition].Type.Value - 1]) + 8 * move.NewPosition.Y + move.NewPosition.X];
         }
 
         if (move.Parameter is MoveCastle)
@@ -293,7 +300,7 @@ internal class Gravy
 
         if (move.CapturedPiece is not null)
         {
-            _hash ^= PolyglotConstants.Keys[64 * (move.CapturedPiece.Type.Value - 1 + colour) + 8 * move.NewPosition.Y + move.NewPosition.X];
+            _hash ^= PolyglotConstants.Keys[64 * (pieceHash[colour][move.CapturedPiece.Type.Value - 1]) + 8 * move.NewPosition.Y + move.NewPosition.X];
         }
 
         if (move.Piece.Color == PieceColor.Black)
@@ -314,10 +321,15 @@ internal class Gravy
                 {
                     int colour = board[file, rank].Color == PieceColor.White ? 1 : 0;
 
-                    _hash ^= PolyglotConstants.Keys[64 * (board[file, rank].Type.Value - 1 + colour) + 8 * rank + file];
+                    _hash ^= PolyglotConstants.Keys[64 * pieceHash[colour][board[file, rank].Type.Value - 1] + 8 * rank + file];
                 }
             }
         }
+        
+        for (int i = 768; i <= 771; i++)
+        {
+            _hash ^= PolyglotConstants.Keys[i];
+        }      
 
         if (board.Turn == PieceColor.White)
         {

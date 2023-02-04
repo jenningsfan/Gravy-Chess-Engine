@@ -152,6 +152,8 @@ namespace Gravy
                 {
                     break;
                 }
+
+                if (!task.Item1) Console.WriteLine($"info depth {depth} {task.Item3}");
             }
             timer.Stop();
 
