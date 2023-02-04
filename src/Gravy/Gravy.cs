@@ -6,8 +6,6 @@ using Cosette.Polyglot.Book;
 
 namespace Gravy;
 
-using TranspositionKey = Tuple<int, ulong>; // Key, depth
-
 internal class Gravy
 {
     public bool IsWhite { get { return board.Turn == PieceColor.White; } }
@@ -34,7 +32,8 @@ internal class Gravy
         new int[] { 1, 7, 3, 5, 9, 11 },
     };
 
-    private LimitedSizeDictionary<TranspositionKey, double> _transpositionTable;
+    private LimitedSizeDictionary<ulong, double> _transpositionTable;
+    private int _transpositionSize = 4096;
 
     public Gravy()
     {
@@ -65,7 +64,6 @@ internal class Gravy
         InitialHash();
 
         _random = new Random();
-        _transpositionTable = new(2048);
     }
 
     public void SetPosition(string fen, string[] moves)
@@ -80,11 +78,13 @@ internal class Gravy
         InitialHash();
     }
 
-    public Tuple<bool, bool, string> ChooseMove(int depth, long time)
+    public Tuple<bool, bool, bool, string> ChooseMove(int depth, long time)
     {
         nodesSearched = 0;
         maxTime = time;
         outOfTime = false;
+
+        _transpositionTable = new(_transpositionSize);
 
         timer = new Stopwatch();
         timer.Start();
@@ -105,7 +105,7 @@ internal class Gravy
 
         timer.Stop();
 
-        return Tuple.Create(outOfTime, polyglotMove is not null, GetMoveString(bestMove));
+        return Tuple.Create(outOfTime, polyglotMove is not null, bestMove.IsMate, GetMoveString(bestMove));
     }
 
     private Tuple<Move, double> NegaMax(ChessBoard board, int depth, double alpha, double beta, int colour)
@@ -137,14 +137,14 @@ internal class Gravy
             board.Move(move);
 
 
-            //double transpositonResult = CheckTranspositon(depth);
-            double transpositonResult = -1;
+            double transpositonResult = CheckTranspositon();
+            //double transpositonResult = -1;
             double eval;
 
             if (transpositonResult == -1)
             {
                 eval = -NegaMax(board, depth - 1, -beta, -alpha, -colour).Item2;
-                _transpositionTable[Tuple.Create(depth, _hash)] = eval;
+                _transpositionTable[_hash] = eval;
             }
             else
             {
@@ -337,13 +337,11 @@ internal class Gravy
         }
     }
 
-    private double CheckTranspositon(int depth)
+    private double CheckTranspositon()
     {
-        TranspositionKey key = Tuple.Create(depth, _hash);
-
-        if (_transpositionTable.ContainsKey(key))
+        if (_transpositionTable.ContainsKey(_hash))
         {
-            return _transpositionTable[key];
+            return _transpositionTable[_hash];
         }
         else
         {

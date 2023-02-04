@@ -141,14 +141,14 @@ namespace Gravy
             {
                 depth++;
 
-                Tuple<bool, bool, string> task = engine.ChooseMove(depth, maxTime - timer.ElapsedMilliseconds);
+                Tuple<bool, bool, bool, string> task = engine.ChooseMove(depth, maxTime - timer.ElapsedMilliseconds);
 
-                if (task.Item3 == "0000") break;
-                if (!task.Item1) bestMove = task.Item3;
+                if (task.Item4 == "0000") break;
+                if (!task.Item1) bestMove = task.Item4;
 
                 if (task.Item2) Console.WriteLine("info book");
 
-                if (timer.ElapsedMilliseconds > maxTime || task.Item2)
+                if (timer.ElapsedMilliseconds > maxTime || task.Item2 || task.Item3)
                 {
                     break;
                 }
