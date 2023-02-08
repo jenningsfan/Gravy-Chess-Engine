@@ -123,7 +123,7 @@ namespace Gravy
                 if (engine.IsWhite) maxTime = Convert.ToInt32(args[Array.IndexOf(args, "wtime") + 1]);
                 if (!engine.IsWhite) maxTime = Convert.ToInt32(args[Array.IndexOf(args, "btime") + 1]);
 
-                maxTime /= 100;
+                maxTime /= 50;
             }
 
             Stopwatch timer = new Stopwatch();
