@@ -98,29 +98,30 @@ internal class Gravy
         }
         else
         {
-            bestMove = NegaMax(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1).Item1;
+            bestMove = NegaScout(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1).Item1;
         }
        
         //board.Move(bestMove);
 
         timer.Stop();
 
-        return Tuple.Create(outOfTime, polyglotMove is not null, bestMove.IsMate, GetMoveString(bestMove));
+        bool isMate = bestMove is null ? false : bestMove.IsMate;
+
+        return Tuple.Create(outOfTime, polyglotMove is not null, isMate, GetMoveString(bestMove));
     }
 
-    private Tuple<Move, double> NegaMax(ChessBoard board, int depth, double alpha, double beta, int colour)
+    private Tuple<Move, double> NegaScout(ChessBoard board, int depth, double alpha, double beta, int colour)
     {
-        Move[] moves = board.Moves();
-
         if (depth <= 0 || board.IsEndGame)
         {
             return Tuple.Create((Move)null, colour * EvaluateBoard());
         }
 
+        List<Move> moves = OrderMoves(board.Moves(), colour);
         Move bestMove = null;
-        double maxEval = int.MinValue;
+        double maxEval = int.MinValue + 1;
 
-        foreach (Move move in OrderMoves(moves, colour))
+        for (int i = 0; i < moves.Count; i++)
         {
             nodesSearched++;
 
@@ -133,9 +134,10 @@ internal class Gravy
                 }
             }
 
+            Move move = moves[i];
+
             UpdateHash(move);
             board.Move(move);
-
 
             double transpositonResult = CheckTranspositon();
             //double transpositonResult = -1;
@@ -143,7 +145,20 @@ internal class Gravy
 
             if (transpositonResult == -1)
             {
-                eval = -NegaMax(board, depth - 1, -beta, -alpha, -colour).Item2;
+                if (i == 0)
+                {
+                    eval = -NegaScout(board, depth - 1, -beta, -alpha, -colour).Item2;
+                }
+                else
+                {
+                    eval = -NegaScout(board, depth - 1, -alpha - 1, -alpha, -colour).Item2;
+
+                    if (alpha < eval && eval < beta)
+                    {
+                        eval = -NegaScout(board, depth - 1, -beta, -eval, -colour).Item2;
+                    }
+                }
+
                 _transpositionTable[_hash] = eval;
             }
             else
@@ -151,13 +166,12 @@ internal class Gravy
                 eval = transpositonResult;
             }
             
-            if (eval > maxEval)
+            if (eval >= maxEval)
             {
                 maxEval = eval;
                 bestMove = move;
             }
             alpha = Math.Max(alpha, eval);
-
             
             board.Cancel();
             UpdateHash(move);
@@ -353,6 +367,18 @@ internal class Gravy
     {
         double evaluation = 0;
 
+        evaluation += EvaluateMaterial();
+        evaluation += EvaluatePawns();
+
+        if (board.IsEndGame) evaluation += EvaluateEndGame();
+
+        return evaluation;
+    }
+
+    private double EvaluateMaterial()
+    {
+        double evaluation = 0;
+
         for (short i = 0; i < 8; i++)
         {
             for (short j = 0; j < 8; j++)
@@ -364,14 +390,79 @@ internal class Gravy
             }
         }
 
-        if (board.IsEndGame)
+        return evaluation;
+    }
+
+    private double EvaluatePawns()
+    {
+        double evaluation = 0;
+
+        bool[][] pawnFiles = new bool[2][] { new bool[8], new bool[8] }; 
+
+        for (short i = 0; i < 8; i++)
         {
-            if (board.EndGame.WonSide is null) evaluation = 0;
-            if (board.EndGame.WonSide == PieceColor.White) evaluation = int.MaxValue - 1;
-            if (board.EndGame.WonSide == PieceColor.Black) evaluation = int.MinValue + 1;
+            for (short j = 0; j < 8; j++)
+            {
+                Piece piece = board[i, j];
+
+                if (piece is not null && piece.Type == Chess.PieceType.Pawn)
+                {
+                    pawnFiles[piece.Color.Value - 1][i] = true;
+                }
+            }
+        }
+
+        for (int file = 0; file < 8; file++)
+        {
+            if (pawnFiles[0][file])
+            {
+                bool isolated = true;
+                // Check if there are pawns on adjacent files
+                if (file > 0 && pawnFiles[0][file - 1])
+                {
+                    isolated = false;
+                }
+                if (file < 7 && pawnFiles[0][file + 1])
+                {
+                    isolated = false;
+                }
+
+                if (isolated)
+                {
+                    evaluation -= 0.5;
+                }
+            }
+
+            if (pawnFiles[1][file])
+            {
+                bool isolated = true;
+                // Check if there are pawns on adjacent files
+                if (file > 0 && pawnFiles[1][file - 1])
+                {
+                    isolated = false;
+                }
+                if (file < 7 && pawnFiles[1][file + 1])
+                {
+                    isolated = false;
+                }
+
+                if (isolated)
+                {
+                    evaluation += 0.5;
+                }
+            }
         }
 
         return evaluation;
+    }
+
+    private double EvaluateEndGame()
+    {
+        if (board.EndGame.WonSide is null) return 0;
+        if (board.EndGame.WonSide == PieceColor.White) return int.MaxValue - 1;
+        if (board.EndGame.WonSide == PieceColor.Black) return int.MinValue + 1;
+
+        return -1;
     }
 
     public void DoMove(string move)
