@@ -116,14 +116,14 @@ namespace Gravy
 
             if (args[0] == "movetime")
             {
-                maxTime = (long)(Convert.ToInt32(args[1]) * 0.9);   // shorten time so there is time for transmission etc.
+                maxTime = (long)Convert.ToInt32(args[1]);
             }
             else if (args.Contains("wtime") || args.Contains("btime"))
             {
                 if (engine.IsWhite) maxTime = Convert.ToInt32(args[Array.IndexOf(args, "wtime") + 1]);
                 if (!engine.IsWhite) maxTime = Convert.ToInt32(args[Array.IndexOf(args, "btime") + 1]);
 
-                maxTime /= 50;
+                maxTime /= 40;
             }
 
             Stopwatch timer = new Stopwatch();
