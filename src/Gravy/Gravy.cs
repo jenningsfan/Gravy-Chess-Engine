@@ -1,4 +1,7 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using Chess;
 
 using Cosette.Polyglot;
@@ -20,17 +23,115 @@ internal class Gravy
     private Random _random;
     private ulong _hash;
 
-    private double[][] pieceValues = new double[][]// P, R, N, B, Q, K
+    private bool[] castlingStatus;
+
+    private static double[][] pieceValues = new double[][]// P, R, N, B, Q, K
     {
-            new double[] { 1, 5.25, 3.5, 3.5, 10, 0 },
-            new double[] { -1, -5.25, -3.5, -3.5, -10, 0 },
+            new double[] {  100,  500,  320,  330,  900,  20000 },
+            new double[] { -100, -500, -320, -330, -900, -20000 },
     };
 
-    private int[][] pieceHash = new int[][]// P, R, N, B, Q, K
+    private static int[][] pieceHash = new int[][]// P, R, N, B, Q, K
     {         
         new int[] { 0, 6, 2, 4, 8, 10 },
         new int[] { 1, 7, 3, 5, 9, 11 },
     };
+
+    private static int[] pawnTable = new int[]
+    {
+        0,  0,  0,  0,  0,  0,  0,  0,
+        50, 50, 50, 50, 50, 50, 50, 50,
+        10, 10, 20, 30, 30, 20, 10, 10,
+         5,  5, 10, 25, 25, 10,  5,  5,
+         0,  0,  0, 20, 20,  0,  0,  0,
+         5, -5,-10,  0,  0,-10, -5,  5,
+         5, 10, 10,-20,-20, 10, 10,  5,
+         0,  0,  0,  0,  0,  0,  0,  0
+    };
+
+    private static int[] knightTable = new int[]
+    {
+        -50,-40,-30,-30,-30,-30,-40,-50,
+        -40,-20,  0,  0,  0,  0,-20,-40,
+        -30,  0, 10, 15, 15, 10,  0,-30,
+        -30,  5, 15, 20, 20, 15,  5,-30,
+        -30,  0, 15, 20, 20, 15,  0,-30,
+        -30,  5, 10, 15, 15, 10,  5,-30,
+        -40,-20,  0,  5,  5,  0,-20,-40,
+        -50,-40,-30,-30,-30,-30,-40,-50,
+    };
+
+    private static int[] bishopTable = new int[]
+    {
+        -20,-10,-10,-10,-10,-10,-10,-20,
+        -10,  0,  0,  0,  0,  0,  0,-10,
+        -10,  0,  5, 10, 10,  5,  0,-10,
+        -10,  5,  5, 10, 10,  5,  5,-10,
+        -10,  0, 10, 10, 10, 10,  0,-10,
+        -10, 10, 10, 10, 10, 10, 10,-10,
+        -10,  5,  0,  0,  0,  0,  5,-10,
+        -20,-10,-10,-10,-10,-10,-10,-20,
+    };
+
+    private static int[] rookTable = new int[]
+    {
+          0,  0,  0,  0,  0,  0,  0,  0,
+          5, 10, 10, 10, 10, 10, 10,  5,
+         -5,  0,  0,  0,  0,  0,  0, -5,
+         -5,  0,  0,  0,  0,  0,  0, -5,
+         -5,  0,  0,  0,  0,  0,  0, -5,
+         -5,  0,  0,  0,  0,  0,  0, -5,
+         -5,  0,  0,  0,  0,  0,  0, -5,
+          0,  0,  0,  5,  5,  0,  0,  0
+    };
+
+    private static int[] queenTable = new int[]
+    {
+        -20,-10,-10, -5, -5,-10,-10,-20,
+        -10,  0,  0,  0,  0,  0,  0,-10,
+        -10,  0,  5,  5,  5,  5,  0,-10,
+         -5,  0,  5,  5,  5,  5,  0, -5,
+          0,  0,  5,  5,  5,  5,  0, -5,
+        -10,  5,  5,  5,  5,  5,  0,-10,
+        -10,  0,  5,  0,  0,  0,  0,-10,
+        -20,-10,-10, -5, -5,-10,-10,-20
+    };
+
+    private static int[] kingMGTable = new int[]
+    {
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -20,-30,-30,-40,-40,-30,-30,-20,
+        -10,-20,-20,-20,-20,-20,-20,-10,
+         20, 20,  0,  0,  0,  0, 20, 20,
+         20, 30, 10,  0,  0, 10, 30, 20
+    };
+
+    private static int[] kingEGTable = new int[]
+    {
+        -50,-40,-30,-20,-20,-30,-40,-50,
+        -30,-20,-10,  0,  0,-10,-20,-30,
+        -30,-10, 20, 30, 30, 20,-10,-30,
+        -30,-10, 30, 40, 40, 30,-10,-30,
+        -30,-10, 30, 40, 40, 30,-10,-30,
+        -30,-10, 20, 30, 30, 20,-10,-30,
+        -30,-30,  0,  0,  0,  0,-30,-30,
+        -50,-30,-30,-30,-30,-30,-30,-50
+    };
+
+    private int[][] MGPieceTables;
+    private int[][] EGPieceTables;
+
+    private static int pawnPhase = 0;
+    private static int knightPhase = 1;
+    private static int bishopPhase = 1;
+    private static int rookPhase = 2;
+    private static int queenPhase = 4;
+    private static int[] piecePhases = new int[] {pawnPhase, rookPhase, knightPhase, bishopPhase, queenPhase, 0}; // 0 for king
+
+    private static int totalPhase = pawnPhase * 16 + knightPhase * 4 + bishopPhase * 4 + rookPhase * 4 + queenPhase * 2;
 
     private LimitedSizeDictionary<ulong, double> _transpositionTable;
     private int _transpositionSize = 20000;
@@ -55,6 +156,8 @@ internal class Gravy
             throw new FileNotFoundException("The file does not exist in either path.");
         }
 
+        InitPieceTables();
+
         StartNewGame();
     }
 
@@ -78,6 +181,72 @@ internal class Gravy
         InitialHash();
     }
 
+    private void InitPieceTables()
+    {
+        int[][] pieceTablesTemp = new int[7][]
+        {
+            pawnTable,
+            rookTable,
+            knightTable,
+            bishopTable,
+            queenTable,
+            kingMGTable,
+            kingEGTable,
+        };
+
+        MGPieceTables = new int[12][];
+        EGPieceTables = new int[12][];
+
+        for (int i = 0; i < 6; i++)
+        {
+            MGPieceTables[i] = pieceTablesTemp[i];
+            MGPieceTables[i + 6] = FlipPieceTable(pieceTablesTemp[i]);
+        }
+
+        for (int i = 0; i < 5; i++)
+        {
+            EGPieceTables[i] = pieceTablesTemp[i];
+            EGPieceTables[i + 5] = FlipPieceTable(pieceTablesTemp[i]);
+        }
+
+        EGPieceTables[10] = kingEGTable;
+        EGPieceTables[11] = FlipPieceTable(kingEGTable);
+    }
+
+    private int GetGamePhase()
+    {
+        // This is taken from the tapered eval algorithim on https://www.chessprogramming.org/index.php?title=Tapered_Eval&oldid=25214
+        int phase = totalPhase;
+
+        for(short i = 0; i < 8; i++)
+        {
+            for (short j = 0; j < 8; j++)
+            {
+                if (board[i, j] != null)
+                {
+                    phase -= piecePhases[board[i, j].Type.Value - 1];
+                }
+            }
+        }
+
+        return (phase * 256 + (totalPhase / 2)) / totalPhase;
+    }
+
+    private int[] FlipPieceTable(int[] pieceTable)
+    {
+        int[] result = new int[64];
+
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 8; j++)
+            {
+                result[i * 8 + j] = -pieceTable[i * 8 + j];
+            }
+        }
+
+        return result.Reverse().ToArray();
+    }
+
     public Tuple<bool, bool, bool, string> ChooseMove(int depth, long time)
     {
         nodesSearched = 0;
@@ -98,7 +267,10 @@ internal class Gravy
         }
         else
         {
-            bestMove = NegaScout(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1).Item1;
+            Tuple<Move, double> result = NegaScout(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1);
+            
+            bestMove = result.Item1;
+            //Console.WriteLine($"\n{bestMove}: {result.Item2}");
         }
        
         //board.Move(bestMove);
@@ -139,6 +311,8 @@ internal class Gravy
             UpdateHash(move);
             board.Move(move);
 
+            ulong oldHash = _hash;
+
             double transpositonResult = CheckTranspositon();
             //double transpositonResult = -1;
             double eval;
@@ -166,7 +340,7 @@ internal class Gravy
                 eval = transpositonResult;
             }
             
-            if (eval >= maxEval)
+            if (eval >= maxEval) // This not being >= seems to have improved chess ability??? TODO: investigate
             {
                 maxEval = eval;
                 bestMove = move;
@@ -174,13 +348,15 @@ internal class Gravy
             alpha = Math.Max(alpha, eval);
             
             board.Cancel();
-            UpdateHash(move);
+            _hash = oldHash;
 
             if (alpha >= beta)
             {
                 break;
             }
         }
+
+        //Console.WriteLine($"{bestMove}: {maxEval}");
 
         return Tuple.Create(bestMove, maxEval);
     }
@@ -279,9 +455,10 @@ internal class Gravy
         {
             CastleType castle = ((MoveCastle)move.Parameter).CastleType;
 
-            
             if (move.Piece.Color == PieceColor.White)
             {
+                castlingStatus[0] = true;
+
                 if (castle == CastleType.King)
                 {
                     _hash ^= PolyglotConstants.Keys[768];
@@ -294,6 +471,8 @@ internal class Gravy
 
             if (move.Piece.Color == PieceColor.Black)
             {
+                castlingStatus[1] = true;
+
                 if (castle == CastleType.King)
                 {
                     _hash ^= PolyglotConstants.Keys[770];
@@ -349,6 +528,8 @@ internal class Gravy
         {
             _hash ^= PolyglotConstants.Keys[780];
         }
+
+        castlingStatus = new bool[2] { false, false };
     }
 
     private double CheckTranspositon()
@@ -363,14 +544,86 @@ internal class Gravy
         }
     }
 
+    public void PrintBoard()
+    {
+        for(short i = 7; i >= 0; i--)
+        {
+            for (short j = 0; j < 8; j++)
+            {
+                if (board[j, i] != null)
+                {
+                    Console.Write(board[j, i].ToFenChar());
+                }
+                else
+                {
+                    Console.Write(" ");
+                }
+            }
+            Console.WriteLine("");
+        }
+    }
+
+
     public double EvaluateBoard()
     {
         double evaluation = 0;
 
-        evaluation += EvaluateMaterial();
-        evaluation += EvaluatePawns();
+        evaluation += EvaluateMaterial(); //Console.WriteLine(evaluation);
+        evaluation += EvaluatePawns(); //Console.WriteLine(evaluation);
+        evaluation += EvaluateCastling(); //Console.WriteLine(evaluation);
+        //evaluation += EvaluatePieceTables(); Console.WriteLine(evaluation);
 
         if (board.IsEndGame) evaluation += EvaluateEndGame();
+
+        return evaluation;
+    }
+
+    private double EvaluatePieceTables()
+    {
+        double evaluation = 0;
+
+        double MGEval = 0;
+        for (short i = 0; i < 8; i++)
+        {
+            for (short j = 0; j < 8; j++)
+            {
+                if (board[i, j] != null)
+                {
+                    MGEval += MGPieceTables[(board[i, j].Color - 1) * 6 + board[i, j].Type.Value - 1][i * 8 + j];
+                }
+            }
+        }
+
+        double EGEval = 0;
+        for (short i = 0; i < 8; i++)
+        {
+            for (short j = 0; j < 8; j++)
+            {
+                if (board[i, j] != null)
+                {
+                    EGEval += EGPieceTables[(board[i, j].Color - 1) * 6 + board[i, j].Type.Value - 1][i * 8 + j];
+                }
+            }
+        }
+
+        int phase = GetGamePhase();
+        evaluation = ((MGEval * (256 - phase)) + (EGEval * phase)) / 256;
+
+        return evaluation;
+    }
+
+    private double EvaluateCastling()
+    {
+        double evaluation = 0;
+
+        if (castlingStatus[0] is true)
+        {
+            evaluation += 100;
+        }
+        if (castlingStatus[1] is true)
+        {
+            evaluation -= 100;
+        }
 
         return evaluation;
     }
@@ -429,7 +682,7 @@ internal class Gravy
 
                 if (isolated)
                 {
-                    evaluation -= 0.5;
+                    evaluation -= 75;
                 }
             }
 
@@ -448,7 +701,7 @@ internal class Gravy
 
                 if (isolated)
                 {
-                    evaluation += 0.5;
+                    evaluation += 75;
                 }
             }
         }

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Text.RegularExpressions;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace Gravy
 {
@@ -17,7 +11,9 @@ namespace Gravy
         }
 
         public int HandleCommand(string command)
-        {
+        {         
+            Trace.TraceInformation(command);
+
             switch (command.Split(" ")[0])
             {
                 case "uci":
@@ -39,12 +35,15 @@ namespace Gravy
                     DoStop();
                     break;
                 case "eval":
-                    Console.WriteLine(engine.EvaluateBoard());
+                    SendCommand($"{engine.EvaluateBoard()}");
+                    break;
+                case "print":
+                    DoPrintBoard();
                     break;
                 case "quit":
                     return -1;
                 default:
-                    Console.WriteLine($"Unknown command: {command}");
+                    SendCommand($"Unknown command: {command}");
                     break;
             }
 
@@ -54,6 +53,8 @@ namespace Gravy
         private void SendCommand(string command)
         {
             Console.WriteLine(command);
+
+            Trace.TraceInformation(command);
         }
 
         private void DoUciCommand()
@@ -146,22 +147,26 @@ namespace Gravy
                 if (task.Item4 == "0000") break;
                 if (!task.Item1) bestMove = task.Item4;
 
-                if (task.Item2) Console.WriteLine("info book");
+                if (task.Item2) SendCommand("info book");
 
                 if (timer.ElapsedMilliseconds > maxTime || task.Item2 || task.Item3)
                 {
                     break;
                 }
 
-                if (!task.Item1) Console.WriteLine($"info depth {depth} {task.Item4}");
+                if (!task.Item1) SendCommand($"info depth {depth} {task.Item4}");
             }
             timer.Stop();
 
-            engine.DoMove(bestMove);
+            //engine.DoMove(bestMove);
 
-            Console.WriteLine($"bestmove {bestMove}");
+            SendCommand($"bestmove {bestMove}");
         }
 
+        private void DoPrintBoard()
+        {
+            engine.PrintBoard();
+        }
 
         private void DoStop()
         {
