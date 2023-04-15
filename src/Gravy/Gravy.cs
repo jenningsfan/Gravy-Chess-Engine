@@ -267,7 +267,7 @@ internal class Gravy
         }
         else
         {
-            Tuple<Move, double> result = NegaScout(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1);
+            Tuple<Move, double> result = Search(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1);
             
             bestMove = result.Item1;
             //Console.WriteLine($"\n{bestMove}: {result.Item2}");
@@ -282,7 +282,7 @@ internal class Gravy
         return Tuple.Create(outOfTime, polyglotMove is not null, isMate, GetMoveString(bestMove));
     }
 
-    private Tuple<Move, double> NegaScout(ChessBoard board, int depth, double alpha, double beta, int colour)
+    private Tuple<Move, double> Search(ChessBoard board, int depth, double alpha, double beta, int colour)
     {
         if (depth <= 0 || board.IsEndGame)
         {
@@ -321,15 +321,15 @@ internal class Gravy
             {
                 if (i == 0)
                 {
-                    eval = -NegaScout(board, depth - 1, -beta, -alpha, -colour).Item2;
+                    eval = -Search(board, depth - 1, -beta, -alpha, -colour).Item2;
                 }
                 else
                 {
-                    eval = -NegaScout(board, depth - 1, -alpha - 1, -alpha, -colour).Item2;
+                    eval = -Search(board, depth - 1, -alpha - 1, -alpha, -colour).Item2;
 
                     if (alpha < eval && eval < beta)
                     {
-                        eval = -NegaScout(board, depth - 1, -beta, -eval, -colour).Item2;
+                        eval = -Search(board, depth - 1, -beta, -eval, -colour).Item2;
                     }
                 }
 
@@ -340,7 +340,7 @@ internal class Gravy
                 eval = transpositonResult;
             }
             
-            if (eval >= maxEval) // This not being >= seems to have improved chess ability??? TODO: investigate
+            if (eval >= maxEval)
             {
                 maxEval = eval;
                 bestMove = move;
