@@ -14,6 +14,9 @@ internal class Gravy
     public bool IsWhite { get { return board.Turn == PieceColor.White; } }
 
     public int nodesSearched;
+    public int nodesPruned;
+    public int transpositionHits;
+
     private Stopwatch timer;
     private long maxTime;
     private bool outOfTime;
@@ -250,6 +253,9 @@ internal class Gravy
     public Tuple<bool, bool, bool, string> ChooseMove(int depth, long time)
     {
         nodesSearched = 0;
+        nodesPruned = 0;
+        transpositionHits = 0;
+
         maxTime = time;
         outOfTime = false;
 
@@ -284,7 +290,13 @@ internal class Gravy
 
     private Tuple<Move, double> Search(ChessBoard board, int depth, double alpha, double beta, int colour)
     {
-        if (depth <= 0 || board.IsEndGame)
+        if (depth == 0)
+        {
+            //return Tuple.Create((Move)null, colour * EvaluateBoard());
+            return Tuple.Create((Move)null, QuiescenceSearch(colour, alpha, beta));
+        }
+
+        if (board.IsEndGame)
         {
             return Tuple.Create((Move)null, colour * EvaluateBoard());
         }
@@ -337,6 +349,7 @@ internal class Gravy
             }
             else
             {
+                transpositionHits++;
                 eval = transpositonResult;
             }
             
@@ -352,6 +365,7 @@ internal class Gravy
 
             if (alpha >= beta)
             {
+                nodesPruned++;
                 break;
             }
         }
@@ -361,15 +375,54 @@ internal class Gravy
         return Tuple.Create(bestMove, maxEval);
     }
 
-    private List<Move> OrderMoves(Move[] moves, int colour)
+    // Search all captures recursively
+    // This stops stpuid blunders
+    private double QuiescenceSearch(int colour, double alpha, double beta)
+    {
+        double evaluation = EvaluateBoard();
+
+        if (evaluation >= beta)
+        {
+            return beta;
+        }
+        if (evaluation > alpha)
+        {
+            alpha = evaluation;
+        }
+
+        List<Move> moves = OrderMoves(board.Moves(), colour, true);
+
+        foreach (Move move in moves)
+        {
+            board.Move(move);
+            evaluation = -QuiescenceSearch(-colour, -beta, -alpha);
+            board.Cancel();
+
+            if (evaluation >= beta)
+            {
+                return beta;
+            }
+            if (evaluation > alpha)
+            {
+                alpha = evaluation;
+            }
+        }
+
+        return alpha;
+    }
+
+    private List<Move> OrderMoves(Move[] moves, int colour, bool onlyCaptures = false)
     {
         PriorityQueue<Move, double> queue = new PriorityQueue<Move, double>(Comparer<double>.Create((x, y) => y.CompareTo(x)));
 
         foreach (Move move in moves)
         {
-            board.Move(move);
-            queue.Enqueue(move, colour * EvaluateBoard());
-            board.Cancel();
+            // If we don't need to exclude captures or we're capturing a piece
+            if (onlyCaptures == false || move.CapturedPiece != null) {
+                board.Move(move);
+                queue.Enqueue(move, colour * EvaluateBoard());
+                board.Cancel();
+            }           
         }
 
         List<Move> orderedMoves = new();

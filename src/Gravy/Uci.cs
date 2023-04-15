@@ -40,6 +40,9 @@ namespace Gravy
                 case "print":
                     DoPrintBoard();
                     break;
+                case "bench":
+                    DoBenchmark(command.Split(" ")[1..]);
+                    break;
                 case "quit":
                     return -1;
                 default:
@@ -113,7 +116,7 @@ namespace Gravy
         private void DoChooseMove(string[] args)
         {
             string bestMove = "0000";
-            long maxTime = 10000;    // 10 seconds
+            long maxTime = 300000;    // 5 minutes
 
             if (args[0] == "movetime")
             {
@@ -166,6 +169,85 @@ namespace Gravy
         private void DoPrintBoard()
         {
             engine.PrintBoard();
+        }
+
+        private void DoBenchmark(string[] args)
+        {
+            //"7K/8/8/2P1P2P/2p1P2p/4p3/7k/8 w - - 0 1"
+
+            string fen = "";
+
+            if (args.Length == 0)
+            {
+                fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+            }
+            else
+            {
+                for (int i = 0; i < args.Length; i++)
+                {
+                    fen += args[i] + " ";
+                }
+                fen = fen[..^1];
+            }
+
+            engine.SetPosition(fen, new string[0] { });
+
+            int depth = 0;
+            int maxTime = int.MaxValue;
+            int maxDepth = 5;
+
+            int totalNodes = 0;
+            int totalPruned = 0;
+            int totalTranspositionHits = 0;
+            long totalTime = 0;
+
+            string bestMove = "0000";
+
+            for (int i = 0; i < 5; i++)
+            {
+                while (depth < maxDepth)
+                {
+                    depth++;
+
+                    Stopwatch timer = new Stopwatch();
+                    timer.Start();
+
+                    Tuple<bool, bool, bool, string> task = engine.ChooseMove(depth, maxTime - timer.ElapsedMilliseconds);
+
+                    timer.Stop();
+
+                    if (task.Item4 == "0000") break;
+                    if (!task.Item1) bestMove = task.Item4;
+
+                    if (task.Item2) SendCommand("info book");
+
+                    if (timer.ElapsedMilliseconds > maxTime || task.Item2 || task.Item3)
+                    {
+                        break;
+                    }
+
+                    if (!task.Item1) SendCommand($"info depth {depth} {bestMove}");
+
+                    SendCommand($"info nodes searched {engine.nodesSearched}");
+                    SendCommand($"info nodes pruned {engine.nodesPruned}");
+                    SendCommand($"info nodes transposition hits {engine.transpositionHits}");
+                    SendCommand($"info nodes time {timer.ElapsedMilliseconds}");
+                    SendCommand($"info nodes time {engine.nodesSearched / timer.ElapsedMilliseconds}K nodes/s\n");
+
+                    totalNodes += engine.nodesSearched;
+                    totalPruned += engine.nodesPruned;
+                    totalTranspositionHits += engine.transpositionHits;
+                    totalTime += timer.ElapsedMilliseconds;
+                }
+            }
+            
+
+            SendCommand($"info depth total");
+            SendCommand($"info nodes searched {totalNodes}");
+            SendCommand($"info nodes pruned {totalPruned}");
+            SendCommand($"info nodes transposition hits {totalTranspositionHits}");
+            SendCommand($"info nodes time {totalTime}");
+            SendCommand($"info nodes time {totalNodes / totalTime}K nodes/s\n");
         }
 
         private void DoStop()
