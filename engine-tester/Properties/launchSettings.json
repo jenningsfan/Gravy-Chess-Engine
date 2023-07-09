@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "engine-tester": {
+      "commandName": "Project",
+      "commandLineArgs": " \"C:\\Users\\Sammy\\source\\repos\\Gravy Chess Engine\\lichess-bot\\engines\\bin\\Gravy.exe\" \"C:\\Users\\Sammy\\source\\repos\\Gravy Chess Engine\\lichess-bot\\engines\\bin\\Gravy.exe\" \"C:\\Users\\Sammy\\source\\repos\\Gravy Chess Engine\\lichess-bot\" \"C:\\Users\\Sammy\\source\\repos\\Gravy Chess Engine\\lichess-bot\" 10 1000"
+    }
+  }
+}

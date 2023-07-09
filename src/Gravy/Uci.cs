@@ -14,6 +14,11 @@ namespace Gravy
         {         
             Trace.TraceInformation(command);
 
+            if (command == null)
+            {
+                return 0;
+            }
+
             switch (command.Split(" ")[0])
             {
                 case "uci":
@@ -191,8 +196,7 @@ namespace Gravy
             }
 
             engine.SetPosition(fen, new string[0] { });
-
-            int depth = 0;
+            
             int maxTime = int.MaxValue;
             int maxDepth = 5;
 
@@ -205,6 +209,7 @@ namespace Gravy
 
             for (int i = 0; i < 5; i++)
             {
+                int depth = 0;
                 while (depth < maxDepth)
                 {
                     depth++;

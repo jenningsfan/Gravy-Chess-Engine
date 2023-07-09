@@ -137,14 +137,17 @@ internal class Gravy
     private static int totalPhase = pawnPhase * 16 + knightPhase * 4 + bishopPhase * 4 + rookPhase * 4 + queenPhase * 2;
 
     private LimitedSizeDictionary<ulong, double> _transpositionTable;
-    private int _transpositionSize = 20000;
+    private int _transpositionSize = 60000;
 
     public Gravy()
     {
-        string bookName = "/gm2001.bin";
+        string bookName = "gm2001.bin";
         //string bookName = "/Cerebellum3Merge.bin";
-        string firstPath = Path.GetFullPath("engines/books") + bookName;
-        string secondPath = Path.GetFullPath("../../../../../lichess-bot/engines/books") + bookName;
+        string firstPath = Path.Join(Path.GetFullPath("engines/books"), bookName);
+        string secondPath = Path.Join(Path.GetFullPath("../../../../../lichess-bot/engines/books"), bookName);
+
+        //Console.WriteLine(firstPath);
+        //Console.WriteLine(secondPath);
 
         if (File.Exists(firstPath))
         {
@@ -292,8 +295,8 @@ internal class Gravy
     {
         if (depth == 0)
         {
-            //return Tuple.Create((Move)null, colour * EvaluateBoard());
-            return Tuple.Create((Move)null, QuiescenceSearch(colour, alpha, beta));
+            return Tuple.Create((Move)null, colour * EvaluateBoard());
+            //return Tuple.Create((Move)null, QuiescenceSearch(colour, alpha, beta));
         }
 
         if (board.IsEndGame)
@@ -463,7 +466,6 @@ internal class Gravy
                 PolyglotBookMove move = availableMoves[availableMoveIndex].Move;
                 string moveString = move.ToString();
 
-                Console.WriteLine($"info promo {move.PromotionPiece}");
                 return new Move(moveString[0..2], moveString[2..4]);
             }
         }
