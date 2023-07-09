@@ -16,7 +16,7 @@ namespace EngineTester
         Draw
     }
 
-    internal class Engine
+    internal class Engine : IDisposable
     {
         private StreamReader stdout;
         private StreamWriter stdin;
@@ -61,9 +61,15 @@ namespace EngineTester
             return response;
         }
 
-        ~Engine()
+        public void Dispose()
         {
             SendCommand("quit");
+            GC.SuppressFinalize(this);
+        }
+
+        ~Engine()
+        {
+            Dispose();
         }
     }
 
@@ -99,6 +105,9 @@ namespace EngineTester
         {
             Engine engine1 = OpenEngine(engine1Path, engine1WorkDir);
             Engine engine2 = OpenEngine(engine2Path, engine2WorkDir);
+
+            engine1.Dispose();
+            engine2.Dispose();
 
             if (white)
             {
