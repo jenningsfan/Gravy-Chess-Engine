@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Security;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using System.Diagnostics;
 
 namespace EngineTester
 {
@@ -103,20 +96,62 @@ namespace EngineTester
 
         public Result PlayGame(bool white, int moveTime)
         {
-            Engine engine1 = OpenEngine(engine1Path, engine1WorkDir);
-            Engine engine2 = OpenEngine(engine2Path, engine2WorkDir);
-
-            engine1.Dispose();
-            engine2.Dispose();
+            Engine engine1;
+            Engine engine2;
 
             if (white)
             {
-                return Result.White;
+                engine1 = OpenEngine(engine1Path, engine1WorkDir);
+                engine2 = OpenEngine(engine2Path, engine2WorkDir);
             }
             else
             {
-                return Result.Black;
+                engine1 = OpenEngine(engine2Path, engine2WorkDir);
+                engine2 = OpenEngine(engine1Path, engine1WorkDir);
             }
+
+            Engine[] engines = new Engine[] { engine1, engine2 };
+
+            try
+            {
+                List<string> moves = new();
+
+                bool playing = true;
+
+                while (playing)
+                {
+                    foreach (Engine engine in engines)
+                    {
+                        engine.SendCommand($"position startpos moves {string.Join(' ', moves)}");
+                        engine.SendCommand($"go movetime {moveTime}");
+
+                        while (true)
+                        {
+                            string move = engine.RecieveResponse();
+                            if (move.StartsWith("bestmove "))
+                            {
+                                move = move[9..];
+                                if (move == "0000")
+                                { 
+                                    playing = false;
+                                    break;
+                                }
+
+                                moves.Add(move);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+            finally
+            {
+                engine1.Dispose();
+                engine2.Dispose();
+            }        
+
+            return Result.Draw;
         }
 
         private static Engine OpenEngine(string path, string workingDirectory)

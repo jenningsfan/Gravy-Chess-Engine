@@ -170,6 +170,8 @@ internal class Gravy
     public void StartNewGame()
     {
         board = new ChessBoard();
+        board.AutoEndgameRules = AutoEndgameRules.All;
+
         InitialHash();
 
         _random = new Random();
@@ -627,7 +629,7 @@ internal class Gravy
         evaluation += EvaluatePawns(); //Console.WriteLine(evaluation);
         evaluation += EvaluateCastling(); //Console.WriteLine(evaluation);
         //evaluation += EvaluatePieceTables(); Console.WriteLine(evaluation);
-
+        
         if (board.IsEndGame) evaluation += EvaluateEndGame();
 
         return evaluation;
@@ -775,6 +777,8 @@ internal class Gravy
 
     public void DoMove(string move)
     {
+        if (move == "") { return; }
+
         PromotionType promotion = PromotionType.Default;
 
         switch (move.ToLower().Last())
