@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -71,7 +72,7 @@ namespace Cosette.Polyglot
             long left = 0;
             long right = entriesCount - 1;
 
-            using (var binaryReader = new BinaryReader(new FileStream(_bookFile, FileMode.Open)))
+            using (var binaryReader = new BinaryReader(GetWriteStream(_bookFile, 3000)))
             {
                 var buffer = new byte[16];
                 var bufferHandle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
@@ -126,6 +127,26 @@ namespace Cosette.Polyglot
             Array.Reverse(buffer, 12, 4);
 
             return (PolyglotBookEntry)Marshal.PtrToStructure(bufferPtr, typeof(PolyglotBookEntry));
+        }
+
+        private FileStream GetWriteStream(string path, int timeoutMs)
+        {
+            var time = Stopwatch.StartNew();
+            while (time.ElapsedMilliseconds < timeoutMs)
+            {
+                try
+                {
+                    return new FileStream(path, FileMode.Open);
+                }
+                catch (IOException e)
+                {
+                    // access error
+                    if (e.HResult != -2147024864)
+                        throw;
+                }
+            }
+
+            throw new TimeoutException($"Failed to get a write handle to {path} within {timeoutMs}ms.");
         }
     }
 }

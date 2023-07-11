@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using Chess;
 
 namespace EngineTester
@@ -87,10 +88,15 @@ namespace EngineTester
         {
             List<Result> results = new List<Result>();
 
-            for (int i = 0; i < games; i++)
+            /*for (int i = 0; i < games; i++)
             {
                 results.Add(PlayGame(i % 2 == 0, moveTime));
-            }
+            }*/
+
+            Parallel.For(0, games, i => {
+                //Thread.Sleep(10000);
+                results.Add(PlayGame(i % 2 == 0, moveTime));
+            });
 
             return results;
         }
