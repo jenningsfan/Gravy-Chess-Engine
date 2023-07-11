@@ -9,4 +9,8 @@
     <StartupObject>EngineTester.Program</StartupObject>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Gera.Chess" Version="1.0.5" />
+  </ItemGroup>
+
 </Project>

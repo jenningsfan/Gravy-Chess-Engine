@@ -1,11 +1,12 @@
 ﻿using System.Diagnostics;
+using Chess;
 
 namespace EngineTester
 {
     public enum Result
     {
-        White,
-        Black,
+        Engine1,
+        Engine2,
         Draw
     }
 
@@ -42,14 +43,14 @@ namespace EngineTester
 
         public void SendCommand(string command)
         {
-            Console.WriteLine($"<< {name} - {command}");
+            //Console.WriteLine($"<< {name} - {command}");
             stdin.WriteLine(command);
         }
 
         public string RecieveResponse()
         {
             string response = stdout.ReadLine();
-            Console.WriteLine($">> {name} - {response}");
+            //Console.WriteLine($">> {name} - {response}");
 
             return response;
         }
@@ -73,6 +74,7 @@ namespace EngineTester
         private string engine1WorkDir;
         private string engine2WorkDir;
 
+        private ChessBoard board;
         public Tester(string engine1Path, string engine2Path, string engine1WorkDir, string engine2WorkDir)
         {
             this.engine1Path = engine1Path;
@@ -80,6 +82,9 @@ namespace EngineTester
 
             this.engine1WorkDir = engine1WorkDir;
             this.engine2WorkDir = engine2WorkDir;
+
+            board = new ChessBoard();
+            board.AutoEndgameRules = AutoEndgameRules.All;
         }
 
         public List<Result> PlayGames(int games, int moveTime)
@@ -110,6 +115,9 @@ namespace EngineTester
                 engine2 = OpenEngine(engine1Path, engine1WorkDir);
             }
 
+            board = new ChessBoard();
+            board.AutoEndgameRules = AutoEndgameRules.All;
+
             Engine[] engines = new Engine[] { engine1, engine2 };
 
             try
@@ -131,13 +139,19 @@ namespace EngineTester
                             if (move.StartsWith("bestmove "))
                             {
                                 move = move[9..];
-                                if (move == "0000")
-                                { 
-                                    playing = false;
-                                    break;
+
+                                DoMove(move);
+                                moves.Add(move);
+
+                                if (board.EndGame != null)
+                                {
+                                    if (board.EndGame.WonSide is null) return Result.Draw;
+                                    if (board.EndGame.WonSide == PieceColor.White && white) return Result.Engine1;
+                                    if (board.EndGame.WonSide == PieceColor.White && !white) return Result.Engine2;
+                                    if (board.EndGame.WonSide == PieceColor.Black && white) return Result.Engine2;
+                                    if (board.EndGame.WonSide == PieceColor.Black && !white) return Result.Engine1;
                                 }
 
-                                moves.Add(move);
                                 break;
                             }
                         }
@@ -152,6 +166,52 @@ namespace EngineTester
             }        
 
             return Result.Draw;
+        }
+
+        public void DoMove(string move)
+        {
+            if (move == "") { return; }
+
+            PromotionType promotion = PromotionType.Default;
+
+            switch (move.ToLower().Last())
+            {
+                case 'q':
+                    promotion = PromotionType.ToQueen;
+                    break;
+                case 'r':
+                    promotion = PromotionType.ToRook;
+                    break;
+                case 'b':
+                    promotion = PromotionType.ToBishop;
+                    break;
+                case 'n':
+                    promotion = PromotionType.ToKnight;
+                    break;
+            }
+
+            board.OnPromotePawn += (sender, e) => e.PromotionResult = promotion;
+
+            board.Move(new Move(move[0..2], move[2..4]));
+        }
+
+        private string GetMoveString(Move move)
+        {
+            if (move is null) return "0000";
+
+            string moveString = move.OriginalPosition.ToString() + move.NewPosition.ToString();
+
+            if (move.Parameter != null)
+            {
+                char lastChar = move.Parameter.ShortStr.Last();
+
+                if (lastChar == 'Q' || lastChar == 'R' || lastChar == 'B' || lastChar == 'N')
+                {
+                    moveString += char.ToLower(lastChar);
+                }
+            }
+
+            return moveString;
         }
 
         private static Engine OpenEngine(string path, string workingDirectory)
