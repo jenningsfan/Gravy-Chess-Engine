@@ -418,27 +418,38 @@ internal class Gravy
 
     private Move[] OrderMoves(Move[] moves, int colour, bool onlyCaptures = false)
     {
-        PriorityQueue<Move, double> queue = new PriorityQueue<Move, double>(Comparer<double>.Create((x, y) => y.CompareTo(x)));
+        int movesLength = moves.Length;
+        int nonQuietLength = 0;
+        int quietLength = 0;
 
-        foreach (Move move in moves)
+        Move[] nonQuiet = new Move[movesLength];
+        Move[] quiet = new Move[movesLength];
+
+        for (int i = 0; i < movesLength; i++)
         {
-            // If we don't need to exclude captures or we're capturing a piece
-            if (onlyCaptures == false || move.CapturedPiece != null) {
-                board.Move(move);
-                queue.Enqueue(move, colour * EvaluateBoard());
-                board.Cancel();
-            }           
+            Move move = moves[i];
+
+            if (move.CapturedPiece != null || move.IsCheck)
+            {
+                nonQuiet[nonQuietLength] = move;
+                nonQuietLength++;
+            }
+            else
+            {
+                quiet[quietLength] = move;
+                quietLength++;
+            }
         }
 
-        int movesLength = moves.Length;
+        if (onlyCaptures == true)
+        {
+            return nonQuiet[..nonQuietLength];
+        }
 
         Move[] orderedMoves = new Move[movesLength];
+        Array.Copy(nonQuiet, orderedMoves, nonQuietLength);
+        Array.Copy(quiet, 0, orderedMoves, nonQuietLength, quietLength);
 
-        for (int i = 0; i < orderedMoves.Length; i++)
-        {
-            orderedMoves[i] = queue.Dequeue();
-        }
-        
         return orderedMoves;
     }
 
