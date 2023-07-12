@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 *.diagsession
 /engine-tester/engines/V1_GRAVY
+/engine-tester/engines/V1A_ARRAY_ORDERMOVES
