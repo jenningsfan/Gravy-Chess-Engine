@@ -306,11 +306,11 @@ internal class Gravy
             return Tuple.Create((Move)null, colour * EvaluateBoard());
         }
 
-        List<Move> moves = OrderMoves(board.Moves(), colour);
+        Move[] moves = OrderMoves(board.Moves(), colour);
         Move bestMove = null;
         double maxEval = int.MinValue + 1;
 
-        for (int i = 0; i < moves.Count; i++)
+        for (int i = 0; i < moves.Length; i++)
         {
             nodesSearched++;
 
@@ -395,7 +395,7 @@ internal class Gravy
             alpha = evaluation;
         }
 
-        List<Move> moves = OrderMoves(board.Moves(), colour, true);
+        Move[] moves = OrderMoves(board.Moves(), colour, true);
 
         foreach (Move move in moves)
         {
@@ -416,7 +416,7 @@ internal class Gravy
         return alpha;
     }
 
-    private List<Move> OrderMoves(Move[] moves, int colour, bool onlyCaptures = false)
+    private Move[] OrderMoves(Move[] moves, int colour, bool onlyCaptures = false)
     {
         PriorityQueue<Move, double> queue = new PriorityQueue<Move, double>(Comparer<double>.Create((x, y) => y.CompareTo(x)));
 
@@ -430,11 +430,13 @@ internal class Gravy
             }           
         }
 
-        List<Move> orderedMoves = new();
+        int movesLength = moves.Length;
 
-        while (queue.Count > 0)
+        Move[] orderedMoves = new Move[movesLength];
+
+        for (int i = 0; i < orderedMoves.Length; i++)
         {
-            orderedMoves.Add(queue.Dequeue());
+            orderedMoves[i] = queue.Dequeue();
         }
         
         return orderedMoves;
