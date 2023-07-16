@@ -26,12 +26,14 @@ internal class Gravy
     private Random _random;
     private ulong _hash;
 
+    private Move? bestMove;
+
     private bool[] castlingStatus;
 
-    private static double[][] pieceValues = new double[][]// P, R, N, B, Q, K
+    private static int[][] pieceValues = new int[][]// P, R, N, B, Q, K
     {
-            new double[] {  100,  500,  320,  330,  900,  20000 },
-            new double[] { -100, -500, -320, -330, -900, -20000 },
+            new int[] {  100,  500,  320,  330,  900,  20000 },
+            new int[] { -100, -500, -320, -330, -900, -20000 },
     };
 
     private static int[][] pieceHash = new int[][]// P, R, N, B, Q, K
@@ -136,8 +138,8 @@ internal class Gravy
 
     private static int totalPhase = pawnPhase * 16 + knightPhase * 4 + bishopPhase * 4 + rookPhase * 4 + queenPhase * 2;
 
-    private LimitedSizeDictionary<ulong, double> _transpositionTable;
-    private int _transpositionSize = 60000;
+    private LimitedSizeDictionary<ulong, int> _transpositionTable;
+    private int _transpositionSize = 30000;
 
     public Gravy()
     {
@@ -161,6 +163,8 @@ internal class Gravy
         {
             throw new FileNotFoundException("The file does not exist in either path.");
         }
+
+        bestMove = null;
 
         InitPieceTables();
 
@@ -269,7 +273,6 @@ internal class Gravy
         timer = new Stopwatch();
         timer.Start();
 
-        Move bestMove;
         Move polyglotMove = GetPolyglotMove();
 
         if (polyglotMove is not null)
@@ -278,9 +281,7 @@ internal class Gravy
         }
         else
         {
-            Tuple<Move, double> result = Search(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1);
-            
-            bestMove = result.Item1;
+            Search(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1);
             //Console.WriteLine($"\n{bestMove}: {result.Item2}");
         }
        
@@ -293,34 +294,32 @@ internal class Gravy
         return Tuple.Create(outOfTime, polyglotMove is not null, isMate, GetMoveString(bestMove));
     }
 
-    private Tuple<Move, double> Search(ChessBoard board, int depth, double alpha, double beta, int colour)
+    private int Search(ChessBoard board, int depth, int alpha, int beta, int colour)
     {
         if (depth == 0)
         {
-            return Tuple.Create((Move)null, colour * EvaluateBoard());
+            return colour * EvaluateBoard();
             //return Tuple.Create((Move)null, QuiescenceSearch(colour, alpha, beta));
         }
 
         if (board.IsEndGame)
         {
-            return Tuple.Create((Move)null, colour * EvaluateBoard());
+            return colour * EvaluateBoard();
         }
 
-        Move[] moves = OrderMoves(board.Moves(), colour);
-        Move bestMove = null;
-        double maxEval = int.MinValue + 1;
+        Move[] moves = OrderMoves(board.Moves());
+
+        bestMove = null;
+        int maxEval = int.MinValue + 1;
 
         for (int i = 0; i < moves.Length; i++)
         {
             nodesSearched++;
 
-            if (nodesSearched % 1024 == 0 || outOfTime)
+            if (timer.ElapsedMilliseconds > maxTime || outOfTime)
             {
-                if (timer.ElapsedMilliseconds > maxTime || outOfTime)
-                {
-                    outOfTime = true;
-                    break;
-                }
+                outOfTime = true;
+                break;
             }
 
             Move move = moves[i];
@@ -330,23 +329,23 @@ internal class Gravy
 
             ulong oldHash = _hash;
 
-            double transpositonResult = CheckTranspositon();
-            //double transpositonResult = -1;
-            double eval;
+            int transpositonResult = CheckTranspositon();
+            //int transpositonResult = -1;
+            int eval;
 
             if (transpositonResult == -1)
             {
                 if (i == 0)
                 {
-                    eval = -Search(board, depth - 1, -beta, -alpha, -colour).Item2;
+                    eval = -Search(board, depth - 1, -beta, -alpha, -colour);
                 }
                 else
                 {
-                    eval = -Search(board, depth - 1, -alpha - 1, -alpha, -colour).Item2;
+                    eval = -Search(board, depth - 1, -alpha - 1, -alpha, -colour);
 
                     if (alpha < eval && eval < beta)
                     {
-                        eval = -Search(board, depth - 1, -beta, -eval, -colour).Item2;
+                        eval = -Search(board, depth - 1, -beta, -eval, -colour);
                     }
                 }
 
@@ -377,14 +376,14 @@ internal class Gravy
 
         //Console.WriteLine($"{bestMove}: {maxEval}");
 
-        return Tuple.Create(bestMove, maxEval);
+        return maxEval;
     }
 
     // Search all captures recursively
     // This stops stpuid blunders
-    private double QuiescenceSearch(int colour, double alpha, double beta)
+    private int QuiescenceSearch(int colour, int alpha, int beta)
     {
-        double evaluation = EvaluateBoard();
+        int evaluation = EvaluateBoard();
 
         if (evaluation >= beta)
         {
@@ -395,7 +394,7 @@ internal class Gravy
             alpha = evaluation;
         }
 
-        Move[] moves = OrderMoves(board.Moves(), colour, true);
+        Move[] moves = OrderMoves(board.Moves(), true);
 
         foreach (Move move in moves)
         {
@@ -416,7 +415,7 @@ internal class Gravy
         return alpha;
     }
 
-    private Move[] OrderMoves(Move[] moves, int colour, bool onlyCaptures = false)
+    private Move[] OrderMoves(Move[] moves, bool onlyCaptures = false)
     {
         int movesLength = moves.Length;
         int nonQuietLength = 0;
@@ -602,7 +601,7 @@ internal class Gravy
         castlingStatus = new bool[2] { false, false };
     }
 
-    private double CheckTranspositon()
+    private int CheckTranspositon()
     {
         if (_transpositionTable.ContainsKey(_hash))
         {
@@ -634,12 +633,12 @@ internal class Gravy
     }
 
 
-    public double EvaluateBoard()
+    public int EvaluateBoard()
     {
-        double evaluation = 0;
+        int evaluation = 0;
 
         evaluation += EvaluateMaterial(); //Console.WriteLine(evaluation);
-        evaluation += EvaluatePawns(); //Console.WriteLine(evaluation);
+        //evaluation += EvaluatePawns(); //Console.WriteLine(evaluation);
         evaluation += EvaluateCastling(); //Console.WriteLine(evaluation);
         //evaluation += EvaluatePieceTables(); Console.WriteLine(evaluation);
         
@@ -648,11 +647,11 @@ internal class Gravy
         return evaluation;
     }
 
-    private double EvaluatePieceTables()
+    private int EvaluatePieceTables()
     {
-        double evaluation = 0;
+        int evaluation = 0;
 
-        double MGEval = 0;
+        int MGEval = 0;
         for (short i = 0; i < 8; i++)
         {
             for (short j = 0; j < 8; j++)
@@ -664,7 +663,7 @@ internal class Gravy
             }
         }
 
-        double EGEval = 0;
+        int EGEval = 0;
         for (short i = 0; i < 8; i++)
         {
             for (short j = 0; j < 8; j++)
@@ -682,9 +681,9 @@ internal class Gravy
         return evaluation;
     }
 
-    private double EvaluateCastling()
+    private int EvaluateCastling()
     {
-        double evaluation = 0;
+        int evaluation = 0;
 
         if (castlingStatus[0] is true)
         {
@@ -698,9 +697,9 @@ internal class Gravy
         return evaluation;
     }
 
-    private double EvaluateMaterial()
+    private int EvaluateMaterial()
     {
-        double evaluation = 0;
+        int evaluation = 0;
 
         for (short i = 0; i < 8; i++)
         {
@@ -716,9 +715,9 @@ internal class Gravy
         return evaluation;
     }
 
-    private double EvaluatePawns()
+    private int EvaluatePawns()
     {
-        double evaluation = 0;
+        int evaluation = 0;
 
         bool[][] pawnFiles = new bool[2][] { new bool[8], new bool[8] }; 
 
@@ -779,7 +778,7 @@ internal class Gravy
         return evaluation;
     }
 
-    private double EvaluateEndGame()
+    private int EvaluateEndGame()
     {
         if (board.EndGame.WonSide is null) return 0;
         if (board.EndGame.WonSide == PieceColor.White) return int.MaxValue - 1;
