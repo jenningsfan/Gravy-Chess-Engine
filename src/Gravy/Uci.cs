@@ -209,6 +209,9 @@ namespace Gravy
 
             for (int i = 0; i < 5; i++)
             {
+                engine.StartNewGame();
+                engine.SetPosition(fen, new string[0] { });
+
                 int depth = 0;
                 while (depth < maxDepth)
                 {
