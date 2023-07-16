@@ -32,7 +32,7 @@ internal class Gravy
         new int[] { 1, 7, 3, 5, 9, 11 },
     };
 
-    private Move? bestMove;
+    private Move[] bestLine;
 
     public bool[] castlingStatus;
 
@@ -62,7 +62,7 @@ internal class Gravy
             throw new FileNotFoundException("The file does not exist in either path.");
         }
 
-        bestMove = null;
+        bestLine = null;
 
         StartNewGame();
     }
@@ -102,6 +102,8 @@ internal class Gravy
 
         _transpositionTable = new(_transpositionSize);
 
+        bestLine = new Move[depth];
+
         timer = new Stopwatch();
         timer.Start();
 
@@ -109,7 +111,7 @@ internal class Gravy
 
         if (polyglotMove is not null)
         {
-            bestMove = polyglotMove;
+            bestLine[depth - 1] = polyglotMove;
         }
         else
         {
@@ -121,6 +123,7 @@ internal class Gravy
 
         timer.Stop();
 
+        Move bestMove = bestLine[depth - 1];
         bool isMate = bestMove is null ? false : bestMove.IsMate;
 
         return Tuple.Create(outOfTime, polyglotMove is not null, isMate, GetMoveString(bestMove));
@@ -141,7 +144,6 @@ internal class Gravy
 
         Move[] moves = OrderMoves(board.Moves());
 
-        bestMove = null;
         int maxEval = int.MinValue + 1;
 
         for (int i = 0; i < moves.Length; i++)
@@ -192,7 +194,7 @@ internal class Gravy
             if (eval >= maxEval)
             {
                 maxEval = eval;
-                bestMove = move;
+                bestLine[depth - 1] = move;
             }
             alpha = Math.Max(alpha, eval);
             

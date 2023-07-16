@@ -26,14 +26,14 @@ internal static class Evaluation
 
     public static int EvaluateBoard(ChessBoard board, bool[] castlingStatus)
     {
+        if (board.IsEndGame) return EvaluateEndGame(board);
+
         int evaluation = 0;
 
         evaluation += EvaluateMaterial(board);
         //evaluation += EvaluatePawns();
         evaluation += EvaluateCastling(castlingStatus);
-        //evaluation += EvaluatePieceTables();
-
-        if (board.IsEndGame) evaluation += EvaluateEndGame(board);
+        evaluation += EvaluatePieceTables(board);
 
         return evaluation;
     }
@@ -194,6 +194,6 @@ internal static class Evaluation
         if (board.EndGame.WonSide == PieceColor.White) return int.MaxValue - 1;
         if (board.EndGame.WonSide == PieceColor.Black) return int.MinValue + 1;
 
-        return -1;
+        return 0;
     }
 }
