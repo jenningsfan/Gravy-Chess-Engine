@@ -40,7 +40,7 @@ namespace Gravy
                     DoStop();
                     break;
                 case "eval":
-                    SendCommand($"{engine.EvaluateBoard()}");
+                    SendCommand($"{Evaluation.EvaluateBoard(engine.board, engine.castlingStatus)}");
                     break;
                 case "print":
                     DoPrintBoard();

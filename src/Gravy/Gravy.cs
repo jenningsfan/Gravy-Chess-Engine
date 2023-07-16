@@ -21,122 +21,20 @@ internal class Gravy
     private long maxTime;
     private bool outOfTime;
 
-    private ChessBoard board;
+    public ChessBoard board;
     private PolyglotBook openingBook;
     private Random _random;
     private ulong _hash;
 
-    private Move? bestMove;
-
-    private bool[] castlingStatus;
-
-    private static int[][] pieceValues = new int[][]// P, R, N, B, Q, K
-    {
-            new int[] {  100,  500,  320,  330,  900,  20000 },
-            new int[] { -100, -500, -320, -330, -900, -20000 },
-    };
-
     private static int[][] pieceHash = new int[][]// P, R, N, B, Q, K
-    {         
+    {
         new int[] { 0, 6, 2, 4, 8, 10 },
         new int[] { 1, 7, 3, 5, 9, 11 },
     };
 
-    private static int[] pawnTable = new int[]
-    {
-        0,  0,  0,  0,  0,  0,  0,  0,
-        50, 50, 50, 50, 50, 50, 50, 50,
-        10, 10, 20, 30, 30, 20, 10, 10,
-         5,  5, 10, 25, 25, 10,  5,  5,
-         0,  0,  0, 20, 20,  0,  0,  0,
-         5, -5,-10,  0,  0,-10, -5,  5,
-         5, 10, 10,-20,-20, 10, 10,  5,
-         0,  0,  0,  0,  0,  0,  0,  0
-    };
+    private Move? bestMove;
 
-    private static int[] knightTable = new int[]
-    {
-        -50,-40,-30,-30,-30,-30,-40,-50,
-        -40,-20,  0,  0,  0,  0,-20,-40,
-        -30,  0, 10, 15, 15, 10,  0,-30,
-        -30,  5, 15, 20, 20, 15,  5,-30,
-        -30,  0, 15, 20, 20, 15,  0,-30,
-        -30,  5, 10, 15, 15, 10,  5,-30,
-        -40,-20,  0,  5,  5,  0,-20,-40,
-        -50,-40,-30,-30,-30,-30,-40,-50,
-    };
-
-    private static int[] bishopTable = new int[]
-    {
-        -20,-10,-10,-10,-10,-10,-10,-20,
-        -10,  0,  0,  0,  0,  0,  0,-10,
-        -10,  0,  5, 10, 10,  5,  0,-10,
-        -10,  5,  5, 10, 10,  5,  5,-10,
-        -10,  0, 10, 10, 10, 10,  0,-10,
-        -10, 10, 10, 10, 10, 10, 10,-10,
-        -10,  5,  0,  0,  0,  0,  5,-10,
-        -20,-10,-10,-10,-10,-10,-10,-20,
-    };
-
-    private static int[] rookTable = new int[]
-    {
-          0,  0,  0,  0,  0,  0,  0,  0,
-          5, 10, 10, 10, 10, 10, 10,  5,
-         -5,  0,  0,  0,  0,  0,  0, -5,
-         -5,  0,  0,  0,  0,  0,  0, -5,
-         -5,  0,  0,  0,  0,  0,  0, -5,
-         -5,  0,  0,  0,  0,  0,  0, -5,
-         -5,  0,  0,  0,  0,  0,  0, -5,
-          0,  0,  0,  5,  5,  0,  0,  0
-    };
-
-    private static int[] queenTable = new int[]
-    {
-        -20,-10,-10, -5, -5,-10,-10,-20,
-        -10,  0,  0,  0,  0,  0,  0,-10,
-        -10,  0,  5,  5,  5,  5,  0,-10,
-         -5,  0,  5,  5,  5,  5,  0, -5,
-          0,  0,  5,  5,  5,  5,  0, -5,
-        -10,  5,  5,  5,  5,  5,  0,-10,
-        -10,  0,  5,  0,  0,  0,  0,-10,
-        -20,-10,-10, -5, -5,-10,-10,-20
-    };
-
-    private static int[] kingMGTable = new int[]
-    {
-        -30,-40,-40,-50,-50,-40,-40,-30,
-        -30,-40,-40,-50,-50,-40,-40,-30,
-        -30,-40,-40,-50,-50,-40,-40,-30,
-        -30,-40,-40,-50,-50,-40,-40,-30,
-        -20,-30,-30,-40,-40,-30,-30,-20,
-        -10,-20,-20,-20,-20,-20,-20,-10,
-         20, 20,  0,  0,  0,  0, 20, 20,
-         20, 30, 10,  0,  0, 10, 30, 20
-    };
-
-    private static int[] kingEGTable = new int[]
-    {
-        -50,-40,-30,-20,-20,-30,-40,-50,
-        -30,-20,-10,  0,  0,-10,-20,-30,
-        -30,-10, 20, 30, 30, 20,-10,-30,
-        -30,-10, 30, 40, 40, 30,-10,-30,
-        -30,-10, 30, 40, 40, 30,-10,-30,
-        -30,-10, 20, 30, 30, 20,-10,-30,
-        -30,-30,  0,  0,  0,  0,-30,-30,
-        -50,-30,-30,-30,-30,-30,-30,-50
-    };
-
-    private int[][] MGPieceTables;
-    private int[][] EGPieceTables;
-
-    private static int pawnPhase = 0;
-    private static int knightPhase = 1;
-    private static int bishopPhase = 1;
-    private static int rookPhase = 2;
-    private static int queenPhase = 4;
-    private static int[] piecePhases = new int[] {pawnPhase, rookPhase, knightPhase, bishopPhase, queenPhase, 0}; // 0 for king
-
-    private static int totalPhase = pawnPhase * 16 + knightPhase * 4 + bishopPhase * 4 + rookPhase * 4 + queenPhase * 2;
+    public bool[] castlingStatus;
 
     private LimitedSizeDictionary<ulong, int> _transpositionTable;
     private int _transpositionSize = 30000;
@@ -166,8 +64,6 @@ internal class Gravy
 
         bestMove = null;
 
-        InitPieceTables();
-
         StartNewGame();
     }
 
@@ -191,72 +87,6 @@ internal class Gravy
         }
 
         InitialHash();
-    }
-
-    private void InitPieceTables()
-    {
-        int[][] pieceTablesTemp = new int[7][]
-        {
-            pawnTable,
-            rookTable,
-            knightTable,
-            bishopTable,
-            queenTable,
-            kingMGTable,
-            kingEGTable,
-        };
-
-        MGPieceTables = new int[12][];
-        EGPieceTables = new int[12][];
-
-        for (int i = 0; i < 6; i++)
-        {
-            MGPieceTables[i] = pieceTablesTemp[i];
-            MGPieceTables[i + 6] = FlipPieceTable(pieceTablesTemp[i]);
-        }
-
-        for (int i = 0; i < 5; i++)
-        {
-            EGPieceTables[i] = pieceTablesTemp[i];
-            EGPieceTables[i + 5] = FlipPieceTable(pieceTablesTemp[i]);
-        }
-
-        EGPieceTables[10] = kingEGTable;
-        EGPieceTables[11] = FlipPieceTable(kingEGTable);
-    }
-
-    private int GetGamePhase()
-    {
-        // This is taken from the tapered eval algorithim on https://www.chessprogramming.org/index.php?title=Tapered_Eval&oldid=25214
-        int phase = totalPhase;
-
-        for(short i = 0; i < 8; i++)
-        {
-            for (short j = 0; j < 8; j++)
-            {
-                if (board[i, j] != null)
-                {
-                    phase -= piecePhases[board[i, j].Type.Value - 1];
-                }
-            }
-        }
-
-        return (phase * 256 + (totalPhase / 2)) / totalPhase;
-    }
-
-    private int[] FlipPieceTable(int[] pieceTable)
-    {
-        int[] result = new int[64];
-
-        for (int i = 0; i < 8; i++)
-        {
-            for (int j = 0; j < 8; j++)
-            {
-                result[i * 8 + j] = -pieceTable[i * 8 + j];
-            }
-        }
-
-        return result.Reverse().ToArray();
     }
 
     public Tuple<bool, bool, bool, string> ChooseMove(int depth, long time)
@@ -298,13 +128,13 @@ internal class Gravy
     {
         if (depth == 0)
         {
-            return colour * EvaluateBoard();
+            return colour * Evaluation.EvaluateBoard(board, castlingStatus);
             //return Tuple.Create((Move)null, QuiescenceSearch(colour, alpha, beta));
         }
 
         if (board.IsEndGame)
         {
-            return colour * EvaluateBoard();
+            return colour * Evaluation.EvaluateBoard(board, castlingStatus);
         }
 
         Move[] moves = OrderMoves(board.Moves());
@@ -383,7 +213,7 @@ internal class Gravy
     // This stops stpuid blunders
     private int QuiescenceSearch(int colour, int alpha, int beta)
     {
-        int evaluation = EvaluateBoard();
+        int evaluation = Evaluation.EvaluateBoard(board, castlingStatus);
 
         if (evaluation >= beta)
         {
@@ -630,161 +460,6 @@ internal class Gravy
             }
             Console.WriteLine("");
         }
-    }
-
-
-    public int EvaluateBoard()
-    {
-        int evaluation = 0;
-
-        evaluation += EvaluateMaterial(); //Console.WriteLine(evaluation);
-        //evaluation += EvaluatePawns(); //Console.WriteLine(evaluation);
-        evaluation += EvaluateCastling(); //Console.WriteLine(evaluation);
-        //evaluation += EvaluatePieceTables(); Console.WriteLine(evaluation);
-        
-        if (board.IsEndGame) evaluation += EvaluateEndGame();
-
-        return evaluation;
-    }
-
-    private int EvaluatePieceTables()
-    {
-        int evaluation = 0;
-
-        int MGEval = 0;
-        for (short i = 0; i < 8; i++)
-        {
-            for (short j = 0; j < 8; j++)
-            {
-                if (board[i, j] != null)
-                {
-                    MGEval += MGPieceTables[(board[i, j].Color - 1) * 6 + board[i, j].Type.Value - 1][i * 8 + j];
-                }
-            }
-        }
-
-        int EGEval = 0;
-        for (short i = 0; i < 8; i++)
-        {
-            for (short j = 0; j < 8; j++)
-            {
-                if (board[i, j] != null)
-                {
-                    EGEval += EGPieceTables[(board[i, j].Color - 1) * 6 + board[i, j].Type.Value - 1][i * 8 + j];
-                }
-            }
-        }
-
-        int phase = GetGamePhase();
-        evaluation = ((MGEval * (256 - phase)) + (EGEval * phase)) / 256;
-
-        return evaluation;
-    }
-
-    private int EvaluateCastling()
-    {
-        int evaluation = 0;
-
-        if (castlingStatus[0] is true)
-        {
-            evaluation += 100;
-        }
-        if (castlingStatus[1] is true)
-        {
-            evaluation -= 100;
-        }
-
-        return evaluation;
-    }
-
-    private int EvaluateMaterial()
-    {
-        int evaluation = 0;
-
-        for (short i = 0; i < 8; i++)
-        {
-            for (short j = 0; j < 8; j++)
-            {
-                if (board[i, j] != null)
-                {
-                    evaluation += pieceValues[board[i, j].Color - 1][board[i, j].Type.Value - 1];
-                }
-            }
-        }
-
-        return evaluation;
-    }
-
-    private int EvaluatePawns()
-    {
-        int evaluation = 0;
-
-        bool[][] pawnFiles = new bool[2][] { new bool[8], new bool[8] }; 
-
-        for (short i = 0; i < 8; i++)
-        {
-            for (short j = 0; j < 8; j++)
-            {
-                Piece piece = board[i, j];
-
-                if (piece is not null && piece.Type == Chess.PieceType.Pawn)
-                {
-                    pawnFiles[piece.Color.Value - 1][i] = true;
-                }
-            }
-        }
-
-        for (int file = 0; file < 8; file++)
-        {
-            if (pawnFiles[0][file])
-            {
-                bool isolated = true;
-                // Check if there are pawns on adjacent files
-                if (file > 0 && pawnFiles[0][file - 1])
-                {
-                    isolated = false;
-                }
-                if (file < 7 && pawnFiles[0][file + 1])
-                {
-                    isolated = false;
-                }
-
-                if (isolated)
-                {
-                    evaluation -= 75;
-                }
-            }
-
-            if (pawnFiles[1][file])
-            {
-                bool isolated = true;
-                // Check if there are pawns on adjacent files
-                if (file > 0 && pawnFiles[1][file - 1])
-                {
-                    isolated = false;
-                }
-                if (file < 7 && pawnFiles[1][file + 1])
-                {
-                    isolated = false;
-                }
-
-                if (isolated)
-                {
-                    evaluation += 75;
-                }
-            }
-        }
-
-        return evaluation;
-    }
-
-    private int EvaluateEndGame()
-    {
-        if (board.EndGame.WonSide is null) return 0;
-        if (board.EndGame.WonSide == PieceColor.White) return int.MaxValue - 1;
-        if (board.EndGame.WonSide == PieceColor.Black) return int.MinValue + 1;
-
-        return -1;
     }
 
     public void DoMove(string move)
