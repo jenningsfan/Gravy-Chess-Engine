@@ -75,7 +75,8 @@ internal class Gravy
         InitialHash();
 
         _random = new Random();
-        _transpositionTable = new(_transpositionSize);
+        //_transpositionTable = new(_transpositionSize);
+        //_transpositionTable = new(_transpositionSize);
     }
 
     public void SetPosition(string fen, string[] moves)
@@ -99,7 +100,7 @@ internal class Gravy
         maxTime = time;
         outOfTime = false;
 
-        //_transpositionTable = new(_transpositionSize);
+        _transpositionTable = new(_transpositionSize);
 
         timer = new Stopwatch();
         timer.Start();
