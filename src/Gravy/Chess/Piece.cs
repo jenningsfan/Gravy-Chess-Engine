@@ -9,7 +9,7 @@ namespace Gravy.GravyChess
     enum Colour
     {
         White,
-        Black
+        Black,
     }
 
     enum PieceType
@@ -20,12 +20,22 @@ namespace Gravy.GravyChess
         Rook,
         Queen,
         King,
-        Empty,
     }
 
     struct Piece
     {
         public Colour Colour;
         public PieceType Type;
+
+        public Piece(Colour colour, PieceType type)
+        {
+            Colour = colour;
+            Type = type;
+        }
+
+        public int BitboardIndex()
+        {
+            return (int)Type + 6 * (int)Colour;
+        }
     }
 }

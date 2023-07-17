@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Gravy.GravyChess
+﻿namespace Gravy.GravyChess
 {
     internal class Board
     {
         public ulong[] bitboards;
+        public Piece[] mailbox;
+
         public Colour turn;
 
         public Board()
@@ -18,19 +14,19 @@ namespace Gravy.GravyChess
 
         public void LoadFen(string fen)
         {
-            Dictionary<char, int> pieceLookup = new Dictionary<char, int>{
-                { 'P', 0 },
-                { 'N', 1 },
-                { 'B', 2 },
-                { 'R', 3 },
-                { 'Q', 4 },
-                { 'K', 5 },
-                { 'p', 6 },
-                { 'n', 7 },
-                { 'b', 8 },
-                { 'r', 9 },
-                { 'q', 10 },
-                { 'k', 11 },
+            Dictionary<char, Piece> pieceLookup = new Dictionary<char, Piece> {
+                { 'P', new(Colour.White, PieceType.Pawn) },
+                { 'N', new(Colour.White, PieceType.Knight) },
+                { 'B', new(Colour.White, PieceType.Bishop) },
+                { 'R', new(Colour.White, PieceType.Rook) },
+                { 'Q', new(Colour.White, PieceType.Queen) },
+                { 'K', new(Colour.White, PieceType.Knight) },
+                { 'p', new(Colour.Black, PieceType.Pawn) },
+                { 'n', new(Colour.Black, PieceType.Knight) },
+                { 'b', new(Colour.Black, PieceType.Bishop) },
+                { 'r', new(Colour.Black, PieceType.Rook) },
+                { 'q', new(Colour.Black, PieceType.Queen) },
+                { 'k', new(Colour.Black, PieceType.Knight) },
             };
 
             int squareIndex = 63;
@@ -45,7 +41,9 @@ namespace Gravy.GravyChess
                     }
                     else
                     {
-                        bitboards[pieceLookup[piece]] |= 1ul << squareIndex;
+                        bitboards[pieceLookup[piece].BitboardIndex()] |= 1ul << squareIndex;
+                        mailbox[squareIndex] = pieceLookup[piece];
+
                         squareIndex--;
                     }
                 }
