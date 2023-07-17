@@ -31,7 +31,7 @@ internal static class Evaluation
         int evaluation = 0;
 
         evaluation += EvaluateMaterial(board);
-        //evaluation += EvaluatePawns();
+        //evaluation += EvaluatePawns(board);
         evaluation += EvaluateCastling(castlingStatus);
         evaluation += EvaluatePieceTables(board);
 
@@ -40,8 +40,6 @@ internal static class Evaluation
 
     private static int EvaluatePieceTables(ChessBoard board)
     {
-        int evaluation = 0;
-
         int MGEval = 0;
         for (short i = 0; i < 8; i++)
         {
@@ -67,7 +65,7 @@ internal static class Evaluation
         }
 
         int phase = GetGamePhase(board);
-        evaluation = ((MGEval * (256 - phase)) + (EGEval * phase)) / 256;
+        int evaluation = ((MGEval * (256 - phase)) + (EGEval * phase)) / 256;
 
         return evaluation;
     }
