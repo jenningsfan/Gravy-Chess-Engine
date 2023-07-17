@@ -6,6 +6,8 @@
     <RootNamespace>Gravy</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RunPostBuildEvent>OnBuildSuccess</RunPostBuildEvent>
+    <SignAssembly>False</SignAssembly>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,7 +19,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="START XCOPY /Y /R &quot;$(SolutionDir)src\Gravy\bin\$(ConfigurationName)\net6.0\*&quot; &quot;$(SolutionDir)lichess-bot\engines\bin\&quot;" />
+    <Exec Command="START XCOPY /Y &quot;$(SolutionDir)src\Gravy\bin\$(ConfigurationName)\net6.0\*&quot; &quot;$(SolutionDir)lichess-bot\engines\bin\&quot;" />
   </Target>
 
 </Project>

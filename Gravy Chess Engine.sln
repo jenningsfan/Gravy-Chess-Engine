@@ -14,6 +14,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gravy", "src\Gravy\Gravy.cs
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cosette.Polyglot", "src\Cosette.Polyglot\Cosette.Polyglot.csproj", "{4DF6B7F8-B591-4225-A672-D8273E33EC78}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "engine-tester", "engine-tester\engine-tester.csproj", "{B8D3F639-7C22-4E1C-BD59-A88903CE5CBC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,14 @@ Global
 		{4DF6B7F8-B591-4225-A672-D8273E33EC78}.Release|Any CPU.Build.0 = Release|x64
 		{4DF6B7F8-B591-4225-A672-D8273E33EC78}.Release|x64.ActiveCfg = Release|x64
 		{4DF6B7F8-B591-4225-A672-D8273E33EC78}.Release|x64.Build.0 = Release|x64
+		{B8D3F639-7C22-4E1C-BD59-A88903CE5CBC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8D3F639-7C22-4E1C-BD59-A88903CE5CBC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8D3F639-7C22-4E1C-BD59-A88903CE5CBC}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B8D3F639-7C22-4E1C-BD59-A88903CE5CBC}.Debug|x64.Build.0 = Debug|Any CPU
+		{B8D3F639-7C22-4E1C-BD59-A88903CE5CBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8D3F639-7C22-4E1C-BD59-A88903CE5CBC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8D3F639-7C22-4E1C-BD59-A88903CE5CBC}.Release|x64.ActiveCfg = Release|Any CPU
+		{B8D3F639-7C22-4E1C-BD59-A88903CE5CBC}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

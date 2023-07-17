@@ -21,130 +21,33 @@ internal class Gravy
     private long maxTime;
     private bool outOfTime;
 
-    private ChessBoard board;
+    public ChessBoard board;
     private PolyglotBook openingBook;
     private Random _random;
     private ulong _hash;
 
-    private bool[] castlingStatus;
-
-    private static double[][] pieceValues = new double[][]// P, R, N, B, Q, K
-    {
-            new double[] {  100,  500,  320,  330,  900,  20000 },
-            new double[] { -100, -500, -320, -330, -900, -20000 },
-    };
-
     private static int[][] pieceHash = new int[][]// P, R, N, B, Q, K
-    {         
+    {
         new int[] { 0, 6, 2, 4, 8, 10 },
         new int[] { 1, 7, 3, 5, 9, 11 },
     };
 
-    private static int[] pawnTable = new int[]
-    {
-        0,  0,  0,  0,  0,  0,  0,  0,
-        50, 50, 50, 50, 50, 50, 50, 50,
-        10, 10, 20, 30, 30, 20, 10, 10,
-         5,  5, 10, 25, 25, 10,  5,  5,
-         0,  0,  0, 20, 20,  0,  0,  0,
-         5, -5,-10,  0,  0,-10, -5,  5,
-         5, 10, 10,-20,-20, 10, 10,  5,
-         0,  0,  0,  0,  0,  0,  0,  0
-    };
+    private Move[] bestLine;
 
-    private static int[] knightTable = new int[]
-    {
-        -50,-40,-30,-30,-30,-30,-40,-50,
-        -40,-20,  0,  0,  0,  0,-20,-40,
-        -30,  0, 10, 15, 15, 10,  0,-30,
-        -30,  5, 15, 20, 20, 15,  5,-30,
-        -30,  0, 15, 20, 20, 15,  0,-30,
-        -30,  5, 10, 15, 15, 10,  5,-30,
-        -40,-20,  0,  5,  5,  0,-20,-40,
-        -50,-40,-30,-30,-30,-30,-40,-50,
-    };
+    public bool[] castlingStatus;
 
-    private static int[] bishopTable = new int[]
-    {
-        -20,-10,-10,-10,-10,-10,-10,-20,
-        -10,  0,  0,  0,  0,  0,  0,-10,
-        -10,  0,  5, 10, 10,  5,  0,-10,
-        -10,  5,  5, 10, 10,  5,  5,-10,
-        -10,  0, 10, 10, 10, 10,  0,-10,
-        -10, 10, 10, 10, 10, 10, 10,-10,
-        -10,  5,  0,  0,  0,  0,  5,-10,
-        -20,-10,-10,-10,-10,-10,-10,-20,
-    };
-
-    private static int[] rookTable = new int[]
-    {
-          0,  0,  0,  0,  0,  0,  0,  0,
-          5, 10, 10, 10, 10, 10, 10,  5,
-         -5,  0,  0,  0,  0,  0,  0, -5,
-         -5,  0,  0,  0,  0,  0,  0, -5,
-         -5,  0,  0,  0,  0,  0,  0, -5,
-         -5,  0,  0,  0,  0,  0,  0, -5,
-         -5,  0,  0,  0,  0,  0,  0, -5,
-          0,  0,  0,  5,  5,  0,  0,  0
-    };
-
-    private static int[] queenTable = new int[]
-    {
-        -20,-10,-10, -5, -5,-10,-10,-20,
-        -10,  0,  0,  0,  0,  0,  0,-10,
-        -10,  0,  5,  5,  5,  5,  0,-10,
-         -5,  0,  5,  5,  5,  5,  0, -5,
-          0,  0,  5,  5,  5,  5,  0, -5,
-        -10,  5,  5,  5,  5,  5,  0,-10,
-        -10,  0,  5,  0,  0,  0,  0,-10,
-        -20,-10,-10, -5, -5,-10,-10,-20
-    };
-
-    private static int[] kingMGTable = new int[]
-    {
-        -30,-40,-40,-50,-50,-40,-40,-30,
-        -30,-40,-40,-50,-50,-40,-40,-30,
-        -30,-40,-40,-50,-50,-40,-40,-30,
-        -30,-40,-40,-50,-50,-40,-40,-30,
-        -20,-30,-30,-40,-40,-30,-30,-20,
-        -10,-20,-20,-20,-20,-20,-20,-10,
-         20, 20,  0,  0,  0,  0, 20, 20,
-         20, 30, 10,  0,  0, 10, 30, 20
-    };
-
-    private static int[] kingEGTable = new int[]
-    {
-        -50,-40,-30,-20,-20,-30,-40,-50,
-        -30,-20,-10,  0,  0,-10,-20,-30,
-        -30,-10, 20, 30, 30, 20,-10,-30,
-        -30,-10, 30, 40, 40, 30,-10,-30,
-        -30,-10, 30, 40, 40, 30,-10,-30,
-        -30,-10, 20, 30, 30, 20,-10,-30,
-        -30,-30,  0,  0,  0,  0,-30,-30,
-        -50,-30,-30,-30,-30,-30,-30,-50
-    };
-
-    private int[][] MGPieceTables;
-    private int[][] EGPieceTables;
-
-    private static int pawnPhase = 0;
-    private static int knightPhase = 1;
-    private static int bishopPhase = 1;
-    private static int rookPhase = 2;
-    private static int queenPhase = 4;
-    private static int[] piecePhases = new int[] {pawnPhase, rookPhase, knightPhase, bishopPhase, queenPhase, 0}; // 0 for king
-
-    private static int totalPhase = pawnPhase * 16 + knightPhase * 4 + bishopPhase * 4 + rookPhase * 4 + queenPhase * 2;
-
-    private LimitedSizeDictionary<ulong, double> _transpositionTable;
-    private int _transpositionSize = 20000;
+    private LimitedSizeDictionary<ulong, int> _transpositionTable;
+    private int _transpositionSize = 30000;
 
     public Gravy()
     {
-        string bookName = "/gm2001.bin";
+        string bookName = "gm2001.bin";
         //string bookName = "/Cerebellum3Merge.bin";
-        string firstPath = Path.GetFullPath("engines/books") + bookName;
-        string secondPath = Path.GetFullPath("../../../../../lichess-bot/engines/books") + bookName;
+        string firstPath = Path.Join(Path.GetFullPath("engines/books"), bookName);
+        string secondPath = Path.Join(Path.GetFullPath("../../../../../lichess-bot/engines/books"), bookName);
+
+        //Console.WriteLine(firstPath);
+        //Console.WriteLine(secondPath);
 
         if (File.Exists(firstPath))
         {
@@ -159,7 +62,7 @@ internal class Gravy
             throw new FileNotFoundException("The file does not exist in either path.");
         }
 
-        InitPieceTables();
+        bestLine = null;
 
         StartNewGame();
     }
@@ -167,9 +70,13 @@ internal class Gravy
     public void StartNewGame()
     {
         board = new ChessBoard();
+        board.AutoEndgameRules = AutoEndgameRules.All;
+
         InitialHash();
 
         _random = new Random();
+        //_transpositionTable = new(_transpositionSize);
+        //_transpositionTable = new(_transpositionSize);
     }
 
     public void SetPosition(string fen, string[] moves)
@@ -184,72 +91,6 @@ internal class Gravy
         InitialHash();
     }
 
-    private void InitPieceTables()
-    {
-        int[][] pieceTablesTemp = new int[7][]
-        {
-            pawnTable,
-            rookTable,
-            knightTable,
-            bishopTable,
-            queenTable,
-            kingMGTable,
-            kingEGTable,
-        };
-
-        MGPieceTables = new int[12][];
-        EGPieceTables = new int[12][];
-
-        for (int i = 0; i < 6; i++)
-        {
-            MGPieceTables[i] = pieceTablesTemp[i];
-            MGPieceTables[i + 6] = FlipPieceTable(pieceTablesTemp[i]);
-        }
-
-        for (int i = 0; i < 5; i++)
-        {
-            EGPieceTables[i] = pieceTablesTemp[i];
-            EGPieceTables[i + 5] = FlipPieceTable(pieceTablesTemp[i]);
-        }
-
-        EGPieceTables[10] = kingEGTable;
-        EGPieceTables[11] = FlipPieceTable(kingEGTable);
-    }
-
-    private int GetGamePhase()
-    {
-        // This is taken from the tapered eval algorithim on https://www.chessprogramming.org/index.php?title=Tapered_Eval&oldid=25214
-        int phase = totalPhase;
-
-        for(short i = 0; i < 8; i++)
-        {
-            for (short j = 0; j < 8; j++)
-            {
-                if (board[i, j] != null)
-                {
-                    phase -= piecePhases[board[i, j].Type.Value - 1];
-                }
-            }
-        }
-
-        return (phase * 256 + (totalPhase / 2)) / totalPhase;
-    }
-
-    private int[] FlipPieceTable(int[] pieceTable)
-    {
-        int[] result = new int[64];
-
-        for (int i = 0; i < 8; i++)
-        {
-            for (int j = 0; j < 8; j++)
-            {
-                result[i * 8 + j] = -pieceTable[i * 8 + j];
-            }
-        }
-
-        return result.Reverse().ToArray();
-    }
-
     public Tuple<bool, bool, bool, string> ChooseMove(int depth, long time)
     {
         nodesSearched = 0;
@@ -261,21 +102,20 @@ internal class Gravy
 
         _transpositionTable = new(_transpositionSize);
 
+        bestLine = new Move[depth];
+
         timer = new Stopwatch();
         timer.Start();
 
-        Move bestMove;
         Move polyglotMove = GetPolyglotMove();
 
         if (polyglotMove is not null)
         {
-            bestMove = polyglotMove;
+            bestLine[depth - 1] = polyglotMove;
         }
         else
         {
-            Tuple<Move, double> result = Search(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1);
-            
-            bestMove = result.Item1;
+            Search(board, depth, int.MinValue + 1, int.MaxValue - 1, (board.Turn == PieceColor.White) ? 1 : -1);
             //Console.WriteLine($"\n{bestMove}: {result.Item2}");
         }
        
@@ -283,39 +123,37 @@ internal class Gravy
 
         timer.Stop();
 
+        Move bestMove = bestLine[depth - 1];
         bool isMate = bestMove is null ? false : bestMove.IsMate;
 
         return Tuple.Create(outOfTime, polyglotMove is not null, isMate, GetMoveString(bestMove));
     }
 
-    private Tuple<Move, double> Search(ChessBoard board, int depth, double alpha, double beta, int colour)
+    private int Search(ChessBoard board, int depth, int alpha, int beta, int colour)
     {
         if (depth == 0)
         {
-            //return Tuple.Create((Move)null, colour * EvaluateBoard());
-            return Tuple.Create((Move)null, QuiescenceSearch(colour, alpha, beta));
+            return colour * Evaluation.EvaluateBoard(board, castlingStatus);
+            //return Tuple.Create((Move)null, QuiescenceSearch(colour, alpha, beta));
         }
 
         if (board.IsEndGame)
         {
-            return Tuple.Create((Move)null, colour * EvaluateBoard());
+            return colour * Evaluation.EvaluateBoard(board, castlingStatus);
         }
 
-        List<Move> moves = OrderMoves(board.Moves(), colour);
-        Move bestMove = null;
-        double maxEval = int.MinValue + 1;
+        Move[] moves = OrderMoves(board.Moves());
 
-        for (int i = 0; i < moves.Count; i++)
+        int maxEval = int.MinValue + 1;
+
+        for (int i = 0; i < moves.Length; i++)
         {
             nodesSearched++;
 
-            if (nodesSearched % 1024 == 0 || outOfTime)
+            if (timer.ElapsedMilliseconds > maxTime || outOfTime)
             {
-                if (timer.ElapsedMilliseconds > maxTime || outOfTime)
-                {
-                    outOfTime = true;
-                    break;
-                }
+                outOfTime = true;
+                break;
             }
 
             Move move = moves[i];
@@ -325,23 +163,23 @@ internal class Gravy
 
             ulong oldHash = _hash;
 
-            double transpositonResult = CheckTranspositon();
-            //double transpositonResult = -1;
-            double eval;
+            int transpositonResult = CheckTranspositon();
+            //int transpositonResult = -1;
+            int eval;
 
             if (transpositonResult == -1)
             {
                 if (i == 0)
                 {
-                    eval = -Search(board, depth - 1, -beta, -alpha, -colour).Item2;
+                    eval = -Search(board, depth - 1, -beta, -alpha, -colour);
                 }
                 else
                 {
-                    eval = -Search(board, depth - 1, -alpha - 1, -alpha, -colour).Item2;
+                    eval = -Search(board, depth - 1, -alpha - 1, -alpha, -colour);
 
                     if (alpha < eval && eval < beta)
                     {
-                        eval = -Search(board, depth - 1, -beta, -eval, -colour).Item2;
+                        eval = -Search(board, depth - 1, -beta, -eval, -colour);
                     }
                 }
 
@@ -356,7 +194,7 @@ internal class Gravy
             if (eval >= maxEval)
             {
                 maxEval = eval;
-                bestMove = move;
+                bestLine[depth - 1] = move;
             }
             alpha = Math.Max(alpha, eval);
             
@@ -372,14 +210,14 @@ internal class Gravy
 
         //Console.WriteLine($"{bestMove}: {maxEval}");
 
-        return Tuple.Create(bestMove, maxEval);
+        return maxEval;
     }
 
     // Search all captures recursively
     // This stops stpuid blunders
-    private double QuiescenceSearch(int colour, double alpha, double beta)
+    private int QuiescenceSearch(int colour, int alpha, int beta)
     {
-        double evaluation = EvaluateBoard();
+        int evaluation = Evaluation.EvaluateBoard(board, castlingStatus);
 
         if (evaluation >= beta)
         {
@@ -390,7 +228,7 @@ internal class Gravy
             alpha = evaluation;
         }
 
-        List<Move> moves = OrderMoves(board.Moves(), colour, true);
+        Move[] moves = OrderMoves(board.Moves(), true);
 
         foreach (Move move in moves)
         {
@@ -411,27 +249,40 @@ internal class Gravy
         return alpha;
     }
 
-    private List<Move> OrderMoves(Move[] moves, int colour, bool onlyCaptures = false)
+    private Move[] OrderMoves(Move[] moves, bool onlyCaptures = false)
     {
-        PriorityQueue<Move, double> queue = new PriorityQueue<Move, double>(Comparer<double>.Create((x, y) => y.CompareTo(x)));
+        int movesLength = moves.Length;
+        int nonQuietLength = 0;
+        int quietLength = 0;
 
-        foreach (Move move in moves)
+        Move[] nonQuiet = new Move[movesLength];
+        Move[] quiet = new Move[movesLength];
+
+        for (int i = 0; i < movesLength; i++)
         {
-            // If we don't need to exclude captures or we're capturing a piece
-            if (onlyCaptures == false || move.CapturedPiece != null) {
-                board.Move(move);
-                queue.Enqueue(move, colour * EvaluateBoard());
-                board.Cancel();
-            }           
+            Move move = moves[i];
+
+            if (move.CapturedPiece != null || move.IsCheck)
+            {
+                nonQuiet[nonQuietLength] = move;
+                nonQuietLength++;
+            }
+            else
+            {
+                quiet[quietLength] = move;
+                quietLength++;
+            }
         }
 
-        List<Move> orderedMoves = new();
-
-        while (queue.Count > 0)
+        if (onlyCaptures == true)
         {
-            orderedMoves.Add(queue.Dequeue());
+            return nonQuiet[..nonQuietLength];
         }
-        
+
+        Move[] orderedMoves = new Move[movesLength];
+        Array.Copy(nonQuiet, orderedMoves, nonQuietLength);
+        Array.Copy(quiet, 0, orderedMoves, nonQuietLength, quietLength);
+
         return orderedMoves;
     }
 
@@ -463,7 +314,6 @@ internal class Gravy
                 PolyglotBookMove move = availableMoves[availableMoveIndex].Move;
                 string moveString = move.ToString();
 
-                Console.WriteLine($"info promo {move.PromotionPiece}");
                 return new Move(moveString[0..2], moveString[2..4]);
             }
         }
@@ -585,7 +435,7 @@ internal class Gravy
         castlingStatus = new bool[2] { false, false };
     }
 
-    private double CheckTranspositon()
+    private int CheckTranspositon()
     {
         if (_transpositionTable.ContainsKey(_hash))
         {
@@ -616,163 +466,10 @@ internal class Gravy
         }
     }
 
-
-    public double EvaluateBoard()
-    {
-        double evaluation = 0;
-
-        evaluation += EvaluateMaterial(); //Console.WriteLine(evaluation);
-        evaluation += EvaluatePawns(); //Console.WriteLine(evaluation);
-        evaluation += EvaluateCastling(); //Console.WriteLine(evaluation);
-        //evaluation += EvaluatePieceTables(); Console.WriteLine(evaluation);
-
-        if (board.IsEndGame) evaluation += EvaluateEndGame();
-
-        return evaluation;
-    }
-
-    private double EvaluatePieceTables()
-    {
-        double evaluation = 0;
-
-        double MGEval = 0;
-        for (short i = 0; i < 8; i++)
-        {
-            for (short j = 0; j < 8; j++)
-            {
-                if (board[i, j] != null)
-                {
-                    MGEval += MGPieceTables[(board[i, j].Color - 1) * 6 + board[i, j].Type.Value - 1][i * 8 + j];
-                }
-            }
-        }
-
-        double EGEval = 0;
-        for (short i = 0; i < 8; i++)
-        {
-            for (short j = 0; j < 8; j++)
-            {
-                if (board[i, j] != null)
-                {
-                    EGEval += EGPieceTables[(board[i, j].Color - 1) * 6 + board[i, j].Type.Value - 1][i * 8 + j];
-                }
-            }
-        }
-
-        int phase = GetGamePhase();
-        evaluation = ((MGEval * (256 - phase)) + (EGEval * phase)) / 256;
-
-        return evaluation;
-    }
-
-    private double EvaluateCastling()
-    {
-        double evaluation = 0;
-
-        if (castlingStatus[0] is true)
-        {
-            evaluation += 100;
-        }
-        if (castlingStatus[1] is true)
-        {
-            evaluation -= 100;
-        }
-
-        return evaluation;
-    }
-
-    private double EvaluateMaterial()
-    {
-        double evaluation = 0;
-
-        for (short i = 0; i < 8; i++)
-        {
-            for (short j = 0; j < 8; j++)
-            {
-                if (board[i, j] != null)
-                {
-                    evaluation += pieceValues[board[i, j].Color - 1][board[i, j].Type.Value - 1];
-                }
-            }
-        }
-
-        return evaluation;
-    }
-
-    private double EvaluatePawns()
-    {
-        double evaluation = 0;
-
-        bool[][] pawnFiles = new bool[2][] { new bool[8], new bool[8] }; 
-
-        for (short i = 0; i < 8; i++)
-        {
-            for (short j = 0; j < 8; j++)
-            {
-                Piece piece = board[i, j];
-
-                if (piece is not null && piece.Type == Chess.PieceType.Pawn)
-                {
-                    pawnFiles[piece.Color.Value - 1][i] = true;
-                }
-            }
-        }
-
-        for (int file = 0; file < 8; file++)
-        {
-            if (pawnFiles[0][file])
-            {
-                bool isolated = true;
-                // Check if there are pawns on adjacent files
-                if (file > 0 && pawnFiles[0][file - 1])
-                {
-                    isolated = false;
-                }
-                if (file < 7 && pawnFiles[0][file + 1])
-                {
-                    isolated = false;
-                }
-
-                if (isolated)
-                {
-                    evaluation -= 75;
-                }
-            }
-
-            if (pawnFiles[1][file])
-            {
-                bool isolated = true;
-                // Check if there are pawns on adjacent files
-                if (file > 0 && pawnFiles[1][file - 1])
-                {
-                    isolated = false;
-                }
-                if (file < 7 && pawnFiles[1][file + 1])
-                {
-                    isolated = false;
-                }
-
-                if (isolated)
-                {
-                    evaluation += 75;
-                }
-            }
-        }
-
-        return evaluation;
-    }
-
-    private double EvaluateEndGame()
-    {
-        if (board.EndGame.WonSide is null) return 0;
-        if (board.EndGame.WonSide == PieceColor.White) return int.MaxValue - 1;
-        if (board.EndGame.WonSide == PieceColor.Black) return int.MinValue + 1;
-
-        return -1;
-    }
-
     public void DoMove(string move)
     {
+        if (move == "") { return; }
+
         PromotionType promotion = PromotionType.Default;
 
         switch (move.ToLower().Last())
