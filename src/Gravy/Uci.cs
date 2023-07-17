@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using Gravy.GravyChess;
+using System.Diagnostics;
 
 namespace Gravy
 {
@@ -47,6 +48,12 @@ namespace Gravy
                     break;
                 case "bench":
                     DoBenchmark(command.Split(" ")[1..]);
+                    break;
+                case "position_bitboard":
+                    DoBitboardSetPosition(command.Split(" ")[1..]);
+                    break;
+                case "print_bitboard":
+                    //DoPrintBoard();
                     break;
                 case "quit":
                     return -1;
@@ -256,6 +263,14 @@ namespace Gravy
             SendCommand($"info nodes transposition hits {totalTranspositionHits}");
             SendCommand($"info nodes time {totalTime}");
             SendCommand($"info nodes time {totalNodes / totalTime}K nodes/s\n");
+        }
+
+        private void DoBitboardSetPosition(string[] args)
+        {
+            Board board = new();
+
+            board.LoadFen(args[0]);
+            board.PrintBoard();
         }
 
         private void DoStop()

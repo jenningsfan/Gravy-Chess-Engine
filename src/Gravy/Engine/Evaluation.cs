@@ -135,7 +135,7 @@ internal static class Evaluation
             {
                 Piece piece = board[i, j];
 
-                if (piece is not null && piece.Type == Chess.PieceType.Pawn)
+                if (piece is not null && piece.Type == PieceType.Pawn)
                 {
                     pawnFiles[piece.Color.Value - 1][i] = true;
                 }
