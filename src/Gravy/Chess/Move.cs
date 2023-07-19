@@ -29,8 +29,10 @@ namespace Gravy.GravyChess
         public bool IsEnPassant;
         public int EnPassantSquare;
 
-        
-        public Move(int startSquare, int targetSquare, Piece piece, bool isCapture = false, Piece? capturedPiece = null, bool isCastling = false, CastlingType castleType = 0, bool isEnPassant = false, int enPassantSquare = -1)
+        public bool IsPromotion;
+        public Piece? PromotionPiece;
+
+        public Move(int startSquare, int targetSquare, Piece piece, bool isCapture = false, Piece? capturedPiece = null, bool isCastling = false, CastlingType castleType = 0, bool isEnPassant = false, int enPassantSquare = -1, bool isPromotion = false, Piece? promotionPiece = null)
         {
             StartSquare = startSquare;
             TargetSquare = targetSquare;
@@ -44,6 +46,9 @@ namespace Gravy.GravyChess
 
             IsEnPassant = isEnPassant;
             EnPassantSquare = enPassantSquare;
+
+            IsPromotion = isPromotion;
+            PromotionPiece = promotionPiece;
         }
 
         public Move(string move, Board board)
@@ -87,6 +92,26 @@ namespace Gravy.GravyChess
                 CapturedPiece = new Piece(board.FindPieceType(EnPassantSquare));
             }
             else { EnPassantSquare = -1; }
+
+            if (move.Length == 5)
+            {
+                Dictionary<char, PieceType> pieceLookup = new()
+                {
+                    { 'p', PieceType.Pawn },
+                    { 'n', PieceType.Knight },
+                    { 'b', PieceType.Bishop },
+                    { 'r', PieceType.Rook },
+                    { 'q', PieceType.Queen },
+                };
+
+                IsPromotion = true;
+                PromotionPiece = new Piece(Piece.Colour, pieceLookup[move[4]]);
+            }
+            else
+            {
+                IsPromotion = false;
+                PromotionPiece = null;
+            }
         }
     }
 }

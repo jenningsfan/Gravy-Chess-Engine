@@ -92,11 +92,18 @@
                     MakeMove(new Move(move.TargetSquare + 2, move.TargetSquare - 1, new Piece(move.Piece.Colour, PieceType.Rook)));
                 }
             }
+
+            if (move.IsPromotion)
+            {
+                bitboards[move.Piece.BitboardIndex] ^= 1ul << move.TargetSquare;  // Remove piece
+                bitboards[((Piece)move.PromotionPiece).BitboardIndex] ^= 1ul << move.TargetSquare;  // Add new piece
+            }
         }
 
         public void PrintBoard()
         {
-            Dictionary<int, char> pieceLookup = new Dictionary<int, char> {
+            Dictionary<int, char> pieceLookup = new()
+            {
                 { -1, ' ' },
                 { 0,  'P' },
                 { 1,  'N' },
