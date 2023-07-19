@@ -49,8 +49,8 @@ namespace Gravy
                 case "bench":
                     DoBenchmark(command.Split(" ")[1..]);
                     break;
-                case "position_bitboard":
-                    DoBitboardSetPosition(command.Split(" ")[1..]);
+                case "bitboard":
+                    DoBitboard();
                     break;
                 case "print_bitboard":
                     //DoPrintBoard();
@@ -265,12 +265,56 @@ namespace Gravy
             SendCommand($"info nodes time {totalNodes / totalTime}K nodes/s\n");
         }
 
-        private void DoBitboardSetPosition(string[] args)
+        private void DoBitboard()
         {
             Board board = new();
+            
+            while (true)
+            {
+                string[] command = Console.ReadLine().Split(" ");
 
-            board.LoadFen(args[0]);
-            board.PrintBoard();
+                switch (command[0])
+                {
+                    case "fen":
+                        string fen = "";
+
+                        if (command[1] == "startpos")
+                        {
+                            fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+                        }
+                        else
+                        {
+                            for (int i = 1; i < command.Length; i++)
+                            {
+                                if (command[i] == "moves")
+                                {
+                                    break;
+                                }
+                                else
+                                {
+                                    fen += command[i] + " ";
+                                }
+                            }
+                            fen = fen[..^1];
+                        }
+
+                        board.LoadFen(fen);
+
+                        break;
+                    case "print":
+                        board.PrintBoard();
+                        break;
+                    case "move":
+                        board.MakeMove(new Move(command[1], board));
+                        board.PrintBoard();
+                        break;
+                }
+            }
+        }
+
+        private void DoBitboardSetPosition(string[] args)
+        {
+            
         }
 
         private void DoStop()

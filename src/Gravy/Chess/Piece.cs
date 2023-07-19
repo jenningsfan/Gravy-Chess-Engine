@@ -26,16 +26,22 @@ namespace Gravy.GravyChess
     {
         public Colour Colour;
         public PieceType Type;
+        public int BitboardIndex;
 
         public Piece(Colour colour, PieceType type)
         {
             Colour = colour;
             Type = type;
+
+            BitboardIndex = (int)Type + 6 * (int)Colour;
         }
 
-        public int BitboardIndex()
+        public Piece(int bitboardIndex)
         {
-            return (int)Type + 6 * (int)Colour;
+            BitboardIndex = bitboardIndex;
+
+            Colour = BitboardIndex > 5 ? Colour.Black : Colour.White;
+            Type = (PieceType)(BitboardIndex - 6 * (int)Colour);
         }
     }
 }

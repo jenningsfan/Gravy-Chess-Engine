@@ -10,10 +10,14 @@
         public Board()
         {
             bitboards = new ulong[12];
+            mailbox = new Piece[64];
         }
 
         public void LoadFen(string fen)
         {
+            bitboards = new ulong[12];
+            mailbox = new Piece[64];
+
             Dictionary<char, Piece> pieceLookup = new Dictionary<char, Piece> {
                 { 'P', new(Colour.White, PieceType.Pawn) },
                 { 'N', new(Colour.White, PieceType.Knight) },
@@ -41,7 +45,7 @@
                     }
                     else
                     {
-                        bitboards[pieceLookup[piece].BitboardIndex()] |= 1ul << squareIndex;
+                        bitboards[pieceLookup[piece].BitboardIndex] |= 1ul << squareIndex;
                         mailbox[squareIndex] = pieceLookup[piece];
 
                         squareIndex--;
@@ -50,47 +54,70 @@
             }
         }
 
+        public int FindPieceType(int square)
+        {
+            for (int i = 0; i < 12; i++)
+            {
+                if ((bitboards[i] & (1ul << square)) == (1ul << square))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public void MakeMove(Move move)
+        {
+            bitboards[move.Piece.BitboardIndex] ^= 1ul << move.TargetSquare | 1ul << move.StartSquare;    // toggle start and target squares
+
+            if (move.IsCapture && !move.IsEnPassant)
+            {
+                bitboards[move.CapturedPiece.BitboardIndex] ^= 1ul << move.TargetSquare;  // if capture remove captured piece
+            }
+
+            if (move.IsEnPassant)
+            {
+                bitboards[move.CapturedPiece.BitboardIndex] ^= 1ul << move.EnPassantSquare;
+            }
+        }
+
         public void PrintBoard()
         {
             Dictionary<int, char> pieceLookup = new Dictionary<int, char> {
-                { 0, 'P' },
-                { 1, 'N' },
-                { 2, 'B' },
-                { 3, 'R' },
-                { 4, 'Q' },
-                { 5, 'K' },
-                { 6, 'p' },
-                { 7, 'n' },
-                { 8, 'b' },
-                { 9, 'r' },
+                { -1, ' ' },
+                { 0,  'P' },
+                { 1,  'N' },
+                { 2,  'B' },
+                { 3,  'R' },
+                { 4,  'Q' },
+                { 5,  'K' },
+                { 6,  'p' },
+                { 7,  'n' },
+                { 8,  'b' },
+                { 9,  'r' },
                 { 10, 'q' },
                 { 11, 'k' },
             };
 
             for (int i = 63; i >= 0; i--)
             {
-                bool foundPiece = false;
-
-                for (int j = 0; j < 12; j++)
-                {
-                    if ((bitboards[j] & (1ul << i)) == (1ul << i))
-                    {
-                        Console.Write(pieceLookup[j]);
-                        foundPiece = true;
-                        break;
-                    }
-                }
-
-                if (!foundPiece)
-                {
-                    Console.Write(" ");
-                }
+                int pieceType = FindPieceType(i);
+                Console.Write(pieceLookup[pieceType]);
 
                 if (i % 8 == 0)
                 {
                     Console.WriteLine("");
                 }
             }
+        }
+
+        public static int ConvertNotationSquare(string square)
+        {
+            int file = 8 - (square[0] - 'a') - 1;
+            int rank = square[1] - '0' - 1;
+
+            return file + 8 * rank;
         }
     }
 }
