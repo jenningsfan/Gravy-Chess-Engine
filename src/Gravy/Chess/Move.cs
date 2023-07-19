@@ -1,11 +1,19 @@
-﻿using System;
+﻿using Chess;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Gravy.GravyChess
 {
+    internal enum CastlingType
+    {
+        Short,
+        Long
+    }
+
     internal struct Move
     {
         public int StartSquare;
@@ -13,22 +21,27 @@ namespace Gravy.GravyChess
         public Piece Piece;
 
         public bool IsCapture;
-        public Piece CapturedPiece;
+        public Piece? CapturedPiece;
 
         public bool IsCastling;
+        public CastlingType CastleType;
+
         public bool IsEnPassant;
         public int EnPassantSquare;
 
-        public Move(int startSquare, int targetSquare, Piece piece, bool isCapture = false, Piece? capturedPiece = null, bool isCastling = false, bool isEnPassant = false, int enPassantSquare = -1)
+        
+        public Move(int startSquare, int targetSquare, Piece piece, bool isCapture = false, Piece? capturedPiece = null, bool isCastling = false, CastlingType castleType = 0, bool isEnPassant = false, int enPassantSquare = -1)
         {
             StartSquare = startSquare;
             TargetSquare = targetSquare;
             Piece = piece;
 
             IsCapture = isCapture;
-            CapturedPiece = (Piece)capturedPiece;
+            CapturedPiece = capturedPiece;
 
             IsCastling = isCastling;
+            CastleType = castleType;
+
             IsEnPassant = isEnPassant;
             EnPassantSquare = enPassantSquare;
         }
@@ -44,6 +57,20 @@ namespace Gravy.GravyChess
             CapturedPiece = new Piece(board.FindPieceType(TargetSquare));
 
             IsCastling = Piece.Type == PieceType.King && (StartSquare - TargetSquare == 2 || StartSquare - TargetSquare == -2);
+            
+            if (IsCastling)
+            {
+                if (TargetSquare > StartSquare)
+                {
+                    CastleType = CastlingType.Long;
+                }
+                else
+                {
+                    CastleType = CastlingType.Short;
+                }
+            }
+            else { CastleType = 0; }
+            
             IsEnPassant = Piece.Type == PieceType.Pawn && !IsCapture && (StartSquare - TargetSquare == 7 || StartSquare - TargetSquare == -7 || StartSquare - TargetSquare == 9 || StartSquare - TargetSquare == -9);
 
             if (IsEnPassant)

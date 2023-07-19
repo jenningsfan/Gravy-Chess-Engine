@@ -24,13 +24,13 @@
                 { 'B', new(Colour.White, PieceType.Bishop) },
                 { 'R', new(Colour.White, PieceType.Rook) },
                 { 'Q', new(Colour.White, PieceType.Queen) },
-                { 'K', new(Colour.White, PieceType.Knight) },
+                { 'K', new(Colour.White, PieceType.King) },
                 { 'p', new(Colour.Black, PieceType.Pawn) },
                 { 'n', new(Colour.Black, PieceType.Knight) },
                 { 'b', new(Colour.Black, PieceType.Bishop) },
                 { 'r', new(Colour.Black, PieceType.Rook) },
                 { 'q', new(Colour.Black, PieceType.Queen) },
-                { 'k', new(Colour.Black, PieceType.Knight) },
+                { 'k', new(Colour.Black, PieceType.King) },
             };
 
             int squareIndex = 63;
@@ -73,12 +73,24 @@
 
             if (move.IsCapture && !move.IsEnPassant)
             {
-                bitboards[move.CapturedPiece.BitboardIndex] ^= 1ul << move.TargetSquare;  // if capture remove captured piece
+                bitboards[((Piece)move.CapturedPiece).BitboardIndex] ^= 1ul << move.TargetSquare;  // if capture remove captured piece
             }
 
             if (move.IsEnPassant)
             {
-                bitboards[move.CapturedPiece.BitboardIndex] ^= 1ul << move.EnPassantSquare;
+                bitboards[((Piece)move.CapturedPiece).BitboardIndex] ^= 1ul << move.EnPassantSquare;
+            }
+
+            if (move.IsCastling)
+            {
+                if (move.CastleType == CastlingType.Short)
+                {
+                    MakeMove(new Move(move.TargetSquare - 1, move.TargetSquare + 1, new Piece(move.Piece.Colour, PieceType.Rook)));
+                }
+                else
+                {
+                    MakeMove(new Move(move.TargetSquare + 2, move.TargetSquare - 1, new Piece(move.Piece.Colour, PieceType.Rook)));
+                }
             }
         }
 
