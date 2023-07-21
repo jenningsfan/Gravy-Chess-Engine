@@ -15,60 +15,6 @@
             moves = new Stack<Move>();
         }
 
-        public void LoadFen(string fen)
-        {
-            bitboards = new ulong[12];
-            mailbox = new Piece[64];
-
-            Dictionary<char, Piece> pieceLookup = new Dictionary<char, Piece> {
-                { 'P', new(Colour.White, PieceType.Pawn) },
-                { 'N', new(Colour.White, PieceType.Knight) },
-                { 'B', new(Colour.White, PieceType.Bishop) },
-                { 'R', new(Colour.White, PieceType.Rook) },
-                { 'Q', new(Colour.White, PieceType.Queen) },
-                { 'K', new(Colour.White, PieceType.King) },
-                { 'p', new(Colour.Black, PieceType.Pawn) },
-                { 'n', new(Colour.Black, PieceType.Knight) },
-                { 'b', new(Colour.Black, PieceType.Bishop) },
-                { 'r', new(Colour.Black, PieceType.Rook) },
-                { 'q', new(Colour.Black, PieceType.Queen) },
-                { 'k', new(Colour.Black, PieceType.King) },
-            };
-
-            int squareIndex = 63;
-
-            foreach (string rank in fen.Split(" ")[0].Split("/"))
-            {
-                foreach (char piece in rank)
-                {
-                    if (char.IsDigit(piece))
-                    {
-                        squareIndex -= piece - '0';
-                    }
-                    else
-                    {
-                        bitboards[pieceLookup[piece].BitboardIndex] |= 1ul << squareIndex;
-                        mailbox[squareIndex] = pieceLookup[piece];
-
-                        squareIndex--;
-                    }
-                }
-            }
-        }
-
-        public int FindPieceType(int square)
-        {
-            for (int i = 0; i < 12; i++)
-            {
-                if ((bitboards[i] & (1ul << square)) == (1ul << square))
-                {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
-
         public void MakeMove(Move move, bool push = true)
         {
             if (push)
@@ -112,6 +58,61 @@
             Move move = moves.Pop();
             MakeMove(move, false);
         }
+
+        public int FindPieceType(int square)
+        {
+            for (int i = 0; i < 12; i++)
+            {
+                if ((bitboards[i] & (1ul << square)) == (1ul << square))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public void LoadFen(string fen)
+        {
+            bitboards = new ulong[12];
+            mailbox = new Piece[64];
+
+            Dictionary<char, Piece> pieceLookup = new Dictionary<char, Piece> {
+                { 'P', new(Colour.White, PieceType.Pawn) },
+                { 'N', new(Colour.White, PieceType.Knight) },
+                { 'B', new(Colour.White, PieceType.Bishop) },
+                { 'R', new(Colour.White, PieceType.Rook) },
+                { 'Q', new(Colour.White, PieceType.Queen) },
+                { 'K', new(Colour.White, PieceType.King) },
+                { 'p', new(Colour.Black, PieceType.Pawn) },
+                { 'n', new(Colour.Black, PieceType.Knight) },
+                { 'b', new(Colour.Black, PieceType.Bishop) },
+                { 'r', new(Colour.Black, PieceType.Rook) },
+                { 'q', new(Colour.Black, PieceType.Queen) },
+                { 'k', new(Colour.Black, PieceType.King) },
+            };
+
+            int squareIndex = 63;
+
+            foreach (string rank in fen.Split(" ")[0].Split("/"))
+            {
+                foreach (char piece in rank)
+                {
+                    if (char.IsDigit(piece))
+                    {
+                        squareIndex -= piece - '0';
+                    }
+                    else
+                    {
+                        bitboards[pieceLookup[piece].BitboardIndex] |= 1ul << squareIndex;
+                        mailbox[squareIndex] = pieceLookup[piece];
+
+                        squareIndex--;
+                    }
+                }
+            }
+        }
+
 
         public void PrintBoard()
         {
