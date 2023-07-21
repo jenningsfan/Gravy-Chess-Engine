@@ -5,12 +5,14 @@
         public ulong[] bitboards;
         public Piece[] mailbox;
 
+        public Stack<Move> moves;
         public Colour turn;
 
         public Board()
         {
             bitboards = new ulong[12];
             mailbox = new Piece[64];
+            moves = new Stack<Move>();
         }
 
         public void LoadFen(string fen)
@@ -67,8 +69,13 @@
             return -1;
         }
 
-        public void MakeMove(Move move)
+        public void MakeMove(Move move, bool push = true)
         {
+            if (push)
+            {
+                moves.Push(move);
+            }
+
             bitboards[move.Piece.BitboardIndex] ^= 1ul << move.TargetSquare | 1ul << move.StartSquare;    // toggle start and target squares
 
             if (move.IsCapture && !move.IsEnPassant)
@@ -85,11 +92,11 @@
             {
                 if (move.CastleType == CastlingType.Short)
                 {
-                    MakeMove(new Move(move.TargetSquare - 1, move.TargetSquare + 1, new Piece(move.Piece.Colour, PieceType.Rook)));
+                    MakeMove(new Move(move.TargetSquare - 1, move.TargetSquare + 1, new Piece(move.Piece.Colour, PieceType.Rook)), false);
                 }
                 else
                 {
-                    MakeMove(new Move(move.TargetSquare + 2, move.TargetSquare - 1, new Piece(move.Piece.Colour, PieceType.Rook)));
+                    MakeMove(new Move(move.TargetSquare + 2, move.TargetSquare - 1, new Piece(move.Piece.Colour, PieceType.Rook)), false);
                 }
             }
 
@@ -98,6 +105,12 @@
                 bitboards[move.Piece.BitboardIndex] ^= 1ul << move.TargetSquare;  // Remove piece
                 bitboards[((Piece)move.PromotionPiece).BitboardIndex] ^= 1ul << move.TargetSquare;  // Add new piece
             }
+        }
+
+        public void UnmakeMove()
+        {
+            Move move = moves.Pop();
+            MakeMove(move, false);
         }
 
         public void PrintBoard()

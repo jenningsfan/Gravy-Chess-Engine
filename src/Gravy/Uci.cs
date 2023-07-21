@@ -306,9 +306,12 @@ namespace Gravy
                         break;
                     case "move":
                         board.MakeMove(new Move(command[1], board));
-                        board.PrintBoard();
+                        break;
+                    case "unmake":
+                        board.UnmakeMove();
                         break;
                 }
+                board.PrintBoard();
             }
         }
 
