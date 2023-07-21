@@ -15,6 +15,78 @@
             moves = new Stack<Move>();
         }
 
+        public Move[] GenerateMoves()
+        {
+            Move[] moves = new Move[4096];  // 64 pieces to 64 places
+            int movesOffset = 0;
+
+            for (int i = 0; i < bitboards.Length; i++)
+            {
+                Move[] generatedMoves = GenerateMovesBitboard(i);
+
+                Array.Copy(generatedMoves, 0, moves, generatedMoves.Length, movesOffset);
+                movesOffset += generatedMoves.Length;
+            }
+
+            return moves[..movesOffset];
+        }
+
+        private Move[] GenerateMovesBitboard(int bitboardIndex)
+        {
+            switch ((PieceType)(bitboardIndex % 6))
+            {
+                case PieceType.Pawn:
+                    break;
+                case PieceType.Knight:
+                    break;
+                case PieceType.Bishop:
+                    break;
+                case PieceType.Rook:
+                    break;
+                case PieceType.Queen:
+                    break;
+                case PieceType.King:
+                    break;
+            }
+        }
+
+        private ulong GenerateRookBitmask(int squareIndex)
+        {
+            ulong rowMask = (ulong)0xFF << (squareIndex / 8); // 1111 1111
+            ulong columnMask = (ulong)0x1010101010101010 << (squareIndex % 8);  // 0000 0001  8 times
+
+            ulong moveMask = rowMask | columnMask;
+            moveMask ^= 1ul << squareIndex;
+
+            return moveMask;
+        }
+
+        private ulong[] GenerateMoveBitmasksBlocked(ulong movemask)
+        {
+            List<int> squares = new();
+
+            for (int i = 0; i < 64; i++)
+            {
+                if ((movemask >> i & 1) == 1)
+                {
+                    squares.Add(i);
+                }
+            }
+
+            ulong[] masks = new ulong[squares.Count];
+
+            for (int i = 0; i < masks.Length; i++)
+            {
+                for (int j = 0; j < squares.Count; i++)
+                {
+                    int bit = i >> j & 1;
+                    masks[i] |= (ulong)bit << squares[i];
+                }
+            }
+
+            return masks;
+        }
+
         public void MakeMove(Move move, bool push = true)
         {
             if (push)
@@ -63,7 +135,7 @@
         {
             for (int i = 0; i < 12; i++)
             {
-                if ((bitboards[i] & (1ul << square)) == (1ul << square))
+                if (((bitboards[i] >> square) & 1) == 1)
                 {
                     return i;
                 }
@@ -96,7 +168,7 @@
 
             foreach (string rank in fen.Split(" ")[0].Split("/"))
             {
-                foreach (char piece in rank)
+                foreach (char piece in rank.Reverse())
                 {
                     if (char.IsDigit(piece))
                     {
@@ -133,21 +205,23 @@
                 { 11, 'k' },
             };
 
-            for (int i = 63; i >= 0; i--)
+            for (int i = 7; i >= 0; i--)
             {
-                int pieceType = FindPieceType(i);
-                Console.Write(pieceLookup[pieceType]);
+                string row = "";
 
-                if (i % 8 == 0)
+                for (int j = 0; j < 8; j++)
                 {
-                    Console.WriteLine("");
+                    int pieceType = FindPieceType(i * 8 + j);
+                    row += pieceLookup[pieceType];
                 }
+
+                Console.WriteLine(row);
             }
         }
 
         public static int ConvertNotationSquare(string square)
         {
-            int file = 8 - (square[0] - 'a') - 1;
+            int file = square[0] - 'a';
             int rank = square[1] - '0' - 1;
 
             return file + 8 * rank;
