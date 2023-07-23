@@ -1,4 +1,7 @@
-﻿namespace Gravy.GravyChess
+﻿using Chess;
+using System.Numerics;
+
+namespace Gravy.GravyChess
 {
     internal class Board
     {
@@ -13,6 +16,10 @@
             bitboards = new ulong[12];
             mailbox = new Piece[64];
             moves = new Stack<Move>();
+
+            // This code ensures that the constructor of MagicBitboards is called before it is first used.
+            Type type = typeof(MagicBitboards);
+            System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(type.TypeHandle);
         }
 
         public Move[] GenerateMoves()
@@ -22,7 +29,7 @@
 
             for (int i = 0; i < bitboards.Length; i++)
             {
-                Move[] generatedMoves = GenerateMovesBitboard(i);
+                Move[] generatedMoves = GenerateMovesPieceType(i);
 
                 Array.Copy(generatedMoves, 0, moves, generatedMoves.Length, movesOffset);
                 movesOffset += generatedMoves.Length;
@@ -31,9 +38,48 @@
             return moves[..movesOffset];
         }
 
-        private Move[] GenerateMovesBitboard(int bitboardIndex)
+        private Move[] GenerateMovesPieceType(int bitboardIndex)
         {
-            switch ((PieceType)(bitboardIndex % 6))
+            Move[] moves = new Move[13952];
+            int movesOffset = 0;
+
+            ulong bitboard = bitboards[bitboardIndex];
+            for (int i = 0; i < 64; i++)
+            {
+                int square = BitOperations.LeadingZeroCount(bitboards[bitboardIndex]);
+                bitboard ^= 1ul << square;
+
+                Move[] generatedMoves = GenerateMovesPiece(bitboardIndex, i);
+
+                Array.Copy(moves, 0, moves, moves.Length, movesOffset);
+                movesOffset += generatedMoves.Length;
+            }
+
+            return moves[..movesOffset];
+        }
+
+        private Move[] GenerateMovesPiece(int piece, int fromSquare)
+        {
+            Move[] moves = new Move[218];
+            int movesGenerated = 0;
+
+            ulong movemask = GenerateMovesBitboard(piece, fromSquare);
+
+            for (int i = 0; i < 64; i++)
+            {
+                int toSquare = BitOperations.LeadingZeroCount(movemask);
+                movemask ^= 1ul << toSquare;
+
+                moves[movesGenerated] = new Move(fromSquare, toSquare, new Piece(piece));
+                movesGenerated++;
+            }
+
+            return moves[..movesGenerated];
+        }
+
+        private ulong GenerateMovesBitboard(int piece, int square)
+        {
+            switch ((PieceType)(piece % 6))
             {
                 case PieceType.Pawn:
                     break;
@@ -42,49 +88,14 @@
                 case PieceType.Bishop:
                     break;
                 case PieceType.Rook:
-                    break;
+                    return MagicBitboards.rookMovemasks[square];
                 case PieceType.Queen:
                     break;
                 case PieceType.King:
                     break;
             }
-        }
 
-        private ulong GenerateRookBitmask(int squareIndex)
-        {
-            ulong rowMask = (ulong)0xFF << (squareIndex / 8); // 1111 1111
-            ulong columnMask = (ulong)0x1010101010101010 << (squareIndex % 8);  // 0000 0001  8 times
-
-            ulong moveMask = rowMask | columnMask;
-            moveMask ^= 1ul << squareIndex;
-
-            return moveMask;
-        }
-
-        private ulong[] GenerateMoveBitmasksBlocked(ulong movemask)
-        {
-            List<int> squares = new();
-
-            for (int i = 0; i < 64; i++)
-            {
-                if ((movemask >> i & 1) == 1)
-                {
-                    squares.Add(i);
-                }
-            }
-
-            ulong[] masks = new ulong[squares.Count];
-
-            for (int i = 0; i < masks.Length; i++)
-            {
-                for (int j = 0; j < squares.Count; i++)
-                {
-                    int bit = i >> j & 1;
-                    masks[i] |= (ulong)bit << squares[i];
-                }
-            }
-
-            return masks;
+            return 0;
         }
 
         public void MakeMove(Move move, bool push = true)
