@@ -307,6 +307,14 @@ namespace Gravy
                     case "move":
                         board.MakeMove(new Move(command[1], board));
                         break;
+                    case "generate":
+                        Move[] moves = board.GenerateMoves();
+
+                        foreach (Move move in moves)
+                        {
+                            Console.WriteLine(move.ToString());
+                        }
+                        break;
                     case "unmake":
                         board.UnmakeMove();
                         break;

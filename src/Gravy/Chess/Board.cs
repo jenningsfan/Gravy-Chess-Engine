@@ -9,13 +9,22 @@ namespace Gravy.GravyChess
         public Piece[] mailbox;
 
         public Stack<Move> moves;
-        public Colour turn;
+        public bool whiteToMove;
+
+        public Colour turn { get => whiteToMove ? Colour.White : Colour.Black; }
+
+        private ulong white { get => bitboards[0] | bitboards[1] | bitboards[2] | bitboards[3] | bitboards[4] | bitboards[5]; }
+        private ulong black { get => bitboards[6] | bitboards[7] | bitboards[8] | bitboards[9] | bitboards[10] | bitboards[11]; }
+
+        private ulong friendly { get => whiteToMove ? white : black; }
+        private ulong enemy { get => whiteToMove ? black : white; }
 
         public Board()
         {
             bitboards = new ulong[12];
             mailbox = new Piece[64];
             moves = new Stack<Move>();
+            whiteToMove = true;
 
             // This code ensures that the constructor of MagicBitboards is called before it is first used.
             Type type = typeof(MagicBitboards);
@@ -24,14 +33,14 @@ namespace Gravy.GravyChess
 
         public Move[] GenerateMoves()
         {
-            Move[] moves = new Move[4096];  // 64 pieces to 64 places
+            Move[] moves = new Move[167424];  // 64 pieces to 64 places
             int movesOffset = 0;
 
-            for (int i = 0; i < bitboards.Length; i++)
+            for (int i = (whiteToMove ? 0 : 6); i < (whiteToMove ? 6 : 12); i++)
             {
                 Move[] generatedMoves = GenerateMovesPieceType(i);
 
-                Array.Copy(generatedMoves, 0, moves, generatedMoves.Length, movesOffset);
+                Array.Copy(generatedMoves, 0, moves, movesOffset, generatedMoves.Length);
                 movesOffset += generatedMoves.Length;
             }
 
@@ -44,40 +53,22 @@ namespace Gravy.GravyChess
             int movesOffset = 0;
 
             ulong bitboard = bitboards[bitboardIndex];
-            for (int i = 0; i < 64; i++)
+
+            while (bitboard != 0)
             {
-                int square = BitOperations.LeadingZeroCount(bitboards[bitboardIndex]);
+                int square = BitOperations.TrailingZeroCount(bitboard);
                 bitboard ^= 1ul << square;
 
-                Move[] generatedMoves = GenerateMovesPiece(bitboardIndex, i);
+                Move[] generatedMoves = GeneratePieceMoves(bitboardIndex, square);
 
-                Array.Copy(moves, 0, moves, moves.Length, movesOffset);
+                Array.Copy(generatedMoves, 0, moves, movesOffset, generatedMoves.Length);
                 movesOffset += generatedMoves.Length;
             }
 
             return moves[..movesOffset];
         }
 
-        private Move[] GenerateMovesPiece(int piece, int fromSquare)
-        {
-            Move[] moves = new Move[218];
-            int movesGenerated = 0;
-
-            ulong movemask = GenerateMovesBitboard(piece, fromSquare);
-
-            for (int i = 0; i < 64; i++)
-            {
-                int toSquare = BitOperations.LeadingZeroCount(movemask);
-                movemask ^= 1ul << toSquare;
-
-                moves[movesGenerated] = new Move(fromSquare, toSquare, new Piece(piece));
-                movesGenerated++;
-            }
-
-            return moves[..movesGenerated];
-        }
-
-        private ulong GenerateMovesBitboard(int piece, int square)
+        private Move[] GeneratePieceMoves(int piece, int fromSquare)
         {
             switch ((PieceType)(piece % 6))
             {
@@ -88,14 +79,43 @@ namespace Gravy.GravyChess
                 case PieceType.Bishop:
                     break;
                 case PieceType.Rook:
-                    return MagicBitboards.rookMovemasks[square];
+                    return GenerateRookMoves(piece, fromSquare);
                 case PieceType.Queen:
                     break;
                 case PieceType.King:
                     break;
             }
 
-            return 0;
+            return new Move[0] { };
+        }
+
+        private Move[] GenerateRookMoves(int piece, int fromSquare)
+        {
+            ulong pieceBitboard = friendly | enemy;
+            ulong blockerBitboard = pieceBitboard & MagicBitboards.rookMovemasks[fromSquare];
+
+            (int, ulong) key = (fromSquare, blockerBitboard);
+            ulong movemask = MagicBitboards.rookLookup[key];
+            movemask &= ~friendly;
+
+            return GenerateMovesBitboard(piece, fromSquare, movemask);
+        }
+
+        private Move[] GenerateMovesBitboard(int piece, int fromSquare, ulong movemask)
+        {
+            Move[] moves = new Move[218];
+            int movesGenerated = 0;
+
+            while (movemask != 0)
+            {
+                int toSquare = BitOperations.TrailingZeroCount(movemask);
+                movemask ^= 1ul << toSquare;
+
+                moves[movesGenerated] = new Move(fromSquare, toSquare, new Piece(piece));
+                movesGenerated++;
+            }
+
+            return moves[..movesGenerated];
         }
 
         public void MakeMove(Move move, bool push = true)
@@ -103,6 +123,7 @@ namespace Gravy.GravyChess
             if (push)
             {
                 moves.Push(move);
+                whiteToMove ^= true;    // this is here because this parameter is only used in unmake move to undo moves FIXME: TODO: refactor?, makemove 2 args private and makemove one arg public calling this
             }
 
             bitboards[move.Piece.BitboardIndex] ^= 1ul << move.TargetSquare | 1ul << move.StartSquare;    // toggle start and target squares
@@ -119,14 +140,21 @@ namespace Gravy.GravyChess
 
             if (move.IsCastling)
             {
+                int rookOldSquare;
+                int rookNewSquare;
+
                 if (move.CastleType == CastlingType.Short)
                 {
-                    MakeMove(new Move(move.TargetSquare - 1, move.TargetSquare + 1, new Piece(move.Piece.Colour, PieceType.Rook)), false);
+                    rookOldSquare = move.TargetSquare - 1;
+                    rookNewSquare = move.TargetSquare + 1;
                 }
                 else
                 {
-                    MakeMove(new Move(move.TargetSquare + 2, move.TargetSquare - 1, new Piece(move.Piece.Colour, PieceType.Rook)), false);
+                    rookOldSquare = move.TargetSquare + 2;
+                    rookNewSquare = move.TargetSquare - 1;
                 }
+
+                bitboards[(int)PieceType.Rook + (int)move.Piece.Colour * 6] ^= 1ul << rookOldSquare | 1ul << rookNewSquare;    // toggle start and target squares
             }
 
             if (move.IsPromotion)
@@ -159,6 +187,7 @@ namespace Gravy.GravyChess
         {
             bitboards = new ulong[12];
             mailbox = new Piece[64];
+            string[] fenSplit = fen.Split(" ");
 
             Dictionary<char, Piece> pieceLookup = new Dictionary<char, Piece> {
                 { 'P', new(Colour.White, PieceType.Pawn) },
@@ -177,7 +206,7 @@ namespace Gravy.GravyChess
 
             int squareIndex = 63;
 
-            foreach (string rank in fen.Split(" ")[0].Split("/"))
+            foreach (string rank in fenSplit[0].Split("/"))
             {
                 foreach (char piece in rank.Reverse())
                 {
@@ -193,6 +222,15 @@ namespace Gravy.GravyChess
                         squareIndex--;
                     }
                 }
+            }
+
+            if (fenSplit[1] == "w")
+            {
+                whiteToMove = true;
+            }
+            else
+            {
+                whiteToMove = false;
             }
         }
 
@@ -230,12 +268,20 @@ namespace Gravy.GravyChess
             }
         }
 
-        public static int ConvertNotationSquare(string square)
+        public static int ConvertNotationToSquare(string square)
         {
             int file = square[0] - 'a';
             int rank = square[1] - '0' - 1;
 
             return file + 8 * rank;
+        }
+
+        public static string ConvertSquareToNotation(int square)
+        {
+            char rank = (char)('a' + square % 8);
+            char file = (char)('1' + square / 8);
+
+            return new string(new char[] {rank, file});
         }
     }
 }

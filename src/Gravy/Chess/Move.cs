@@ -53,8 +53,8 @@ namespace Gravy.GravyChess
 
         public Move(string move, Board board)
         {
-            StartSquare = Board.ConvertNotationSquare(move[0..2]);
-            TargetSquare = Board.ConvertNotationSquare(move[2..4]);
+            StartSquare = Board.ConvertNotationToSquare(move[0..2]);
+            TargetSquare = Board.ConvertNotationToSquare(move[2..4]);
 
             Piece = new Piece(board.FindPieceType(StartSquare));
 
@@ -112,6 +112,11 @@ namespace Gravy.GravyChess
                 IsPromotion = false;
                 PromotionPiece = null;
             }
+        }
+
+        override public string ToString()
+        {
+            return Board.ConvertSquareToNotation(StartSquare) + Board.ConvertSquareToNotation(TargetSquare);
         }
     }
 }
