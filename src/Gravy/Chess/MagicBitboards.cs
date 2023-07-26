@@ -26,7 +26,7 @@ namespace Gravy.GravyChess
             rookLookup = GenerateRookLookup();
         }
 
-        public static void GenerateRookMagics()
+        public static void GenerateRookMagics(int max = 47)
         {
             bool IsUnique(ulong[] bitboards) { return bitboards.Distinct().Count() == bitboards.Count(); }
 
@@ -46,7 +46,7 @@ namespace Gravy.GravyChess
                 {
                     magic = (ulong)random.NextInt64();   // create instance
 
-                    for (int shift = 64; shift > 47; shift--)
+                    for (int shift = 63; shift > max; shift--)
                     {
                         ulong[] lookup = rookBlockerBitmasks[i].Select(x => (x * magic) >> shift).ToArray();
                         if (IsUnique(lookup))
@@ -61,7 +61,12 @@ namespace Gravy.GravyChess
 
                 rookLookup[i] = rookBlockerBitmasks[i].Select(x => (x * magic) >> shiftFound).ToArray();
 
-                Console.WriteLine($"Found shift and magic for {i}: {shiftFound}, {magic}, {(rookBlockerBitmasks[i][1] * magic) >> shiftFound}");
+                Console.WriteLine($"{i}: {shiftFound}, {magic}");
+            }
+
+            while (true)
+            {
+                GenerateRookMagics(max + 1);
             }
         }
 
