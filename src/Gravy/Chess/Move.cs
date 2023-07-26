@@ -51,6 +51,25 @@ namespace Gravy.GravyChess
             PromotionPiece = promotionPiece;
         }
 
+        public Move(int startSquare, int targetSquare, Piece piece, Board board, bool isCastling = false, CastlingType castleType = 0, bool isEnPassant = false, int enPassantSquare = -1, bool isPromotion = false, Piece? promotionPiece = null)
+        {
+            StartSquare = startSquare;
+            TargetSquare = targetSquare;
+            Piece = piece;
+
+            IsCapture = (board.enemy & 1ul << TargetSquare) == 1;
+            CapturedPiece = new Piece(board.FindPieceType(TargetSquare));
+
+            IsCastling = isCastling;
+            CastleType = castleType;
+
+            IsEnPassant = isEnPassant;
+            EnPassantSquare = enPassantSquare;
+
+            IsPromotion = isPromotion;
+            PromotionPiece = promotionPiece;
+        }
+
         public Move(string move, Board board)
         {
             StartSquare = Board.ConvertNotationToSquare(move[0..2]);
@@ -58,7 +77,7 @@ namespace Gravy.GravyChess
 
             Piece = new Piece(board.FindPieceType(StartSquare));
 
-            IsCapture = board.FindPieceType(TargetSquare) != -1;
+            IsCapture = (board.enemy >> TargetSquare & 1) == 1;
             CapturedPiece = new Piece(board.FindPieceType(TargetSquare));
 
             IsCastling = Piece.Type == PieceType.King && (StartSquare - TargetSquare == 2 || StartSquare - TargetSquare == -2);

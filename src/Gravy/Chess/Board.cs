@@ -16,8 +16,8 @@ namespace Gravy.GravyChess
         private ulong white { get => bitboards[0] | bitboards[1] | bitboards[2] | bitboards[3] | bitboards[4] | bitboards[5]; }
         private ulong black { get => bitboards[6] | bitboards[7] | bitboards[8] | bitboards[9] | bitboards[10] | bitboards[11]; }
 
-        private ulong friendly { get => whiteToMove ? white : black; }
-        private ulong enemy { get => whiteToMove ? black : white; }
+        public ulong friendly { get => whiteToMove ? white : black; }
+        public ulong enemy { get => whiteToMove ? black : white; }
 
         public Board()
         {
@@ -111,7 +111,7 @@ namespace Gravy.GravyChess
                 int toSquare = BitOperations.TrailingZeroCount(movemask);
                 movemask ^= 1ul << toSquare;
 
-                moves[movesGenerated] = new Move(fromSquare, toSquare, new Piece(piece));
+                moves[movesGenerated] = new Move(fromSquare, toSquare, new Piece(piece), this);
                 movesGenerated++;
             }
 
@@ -168,6 +168,7 @@ namespace Gravy.GravyChess
         {
             Move move = moves.Pop();
             MakeMove(move, false);
+            whiteToMove ^= true;
         }
 
         public int FindPieceType(int square)

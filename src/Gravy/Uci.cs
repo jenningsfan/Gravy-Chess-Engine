@@ -318,6 +318,9 @@ namespace Gravy
                     case "unmake":
                         board.UnmakeMove();
                         break;
+                    case "magics":
+                        MagicBitboards.GenerateRookMagics();
+                        break;
                 }
                 board.PrintBoard();
             }
