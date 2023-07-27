@@ -31,9 +31,9 @@ namespace Gravy.GravyChess
             System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(type.TypeHandle);
         }
 
-        public Move[] GenerateMoves()
+        public Move[] GenerateMoves()   // TODO: change to span https://youtu.be/_vqlIPDR2TU?t=2396
         {
-            Move[] moves = new Move[167424];  // 64 pieces to 64 places
+            Move[] moves = new Move[218];   // Maximum number of moves in any legal positon
             int movesOffset = 0;
 
             for (int i = (whiteToMove ? 0 : 6); i < (whiteToMove ? 6 : 12); i++)
@@ -49,7 +49,7 @@ namespace Gravy.GravyChess
 
         private Move[] GenerateMovesPieceType(int bitboardIndex)
         {
-            Move[] moves = new Move[13952];
+            Move[] moves = new Move[128];
             int movesOffset = 0;
 
             ulong bitboard = bitboards[bitboardIndex];
@@ -59,7 +59,7 @@ namespace Gravy.GravyChess
                 int square = BitOperations.TrailingZeroCount(bitboard);
                 bitboard ^= 1ul << square;
 
-                Move[] generatedMoves = GeneratePieceMoves(bitboardIndex, square);
+                Move[] generatedMoves = GenerateMovesPieceTypeOnSquare(bitboardIndex, square);
 
                 Array.Copy(generatedMoves, 0, moves, movesOffset, generatedMoves.Length);
                 movesOffset += generatedMoves.Length;
@@ -68,7 +68,7 @@ namespace Gravy.GravyChess
             return moves[..movesOffset];
         }
 
-        private Move[] GeneratePieceMoves(int piece, int fromSquare)
+        private Move[] GenerateMovesPieceTypeOnSquare(int piece, int fromSquare)
         {
             switch ((PieceType)(piece % 6))
             {
@@ -79,17 +79,17 @@ namespace Gravy.GravyChess
                 case PieceType.Bishop:
                     break;
                 case PieceType.Rook:
-                    return GenerateRookMoves(piece, fromSquare);
+                    return GenerateMovesRookOnSquare(piece, fromSquare);
                 case PieceType.Queen:
                     break;
                 case PieceType.King:
                     break;
             }
 
-            return new Move[0] { };
+            return Array.Empty<Move>();
         }
 
-        private Move[] GenerateRookMoves(int piece, int fromSquare)
+        private Move[] GenerateMovesRookOnSquare(int piece, int fromSquare)
         {
             ulong pieceBitboard = friendly | enemy;
             ulong blockerBitboard = pieceBitboard & MagicBitboards.rookMovemasks[fromSquare];
@@ -98,12 +98,12 @@ namespace Gravy.GravyChess
             ulong movemask = MagicBitboards.rookLookup[key];
             movemask &= ~friendly;
 
-            return GenerateMovesBitboard(piece, fromSquare, movemask);
+            return GenerateMovesFromBitboard(piece, fromSquare, movemask);
         }
 
-        private Move[] GenerateMovesBitboard(int piece, int fromSquare, ulong movemask)
+        private Move[] GenerateMovesFromBitboard(int piece, int fromSquare, ulong movemask)
         {
-            Move[] moves = new Move[218];
+            Move[] moves = new Move[64];
             int movesGenerated = 0;
 
             while (movemask != 0)

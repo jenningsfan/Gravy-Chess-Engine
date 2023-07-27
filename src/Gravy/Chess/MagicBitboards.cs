@@ -46,7 +46,7 @@ namespace Gravy.GravyChess
                 Console.WriteLine("Shifts: {0}", string.Join(", ", rookShifts));
             };
 
-            Parallel.For(0, 63, i =>
+            Parallel.For(0, 64, i =>
             {
                 int maxLocal = max;
 
