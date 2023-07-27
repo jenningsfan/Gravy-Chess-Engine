@@ -68,7 +68,7 @@ namespace Gravy.GravyChess
 
                     rookLookup[i] = rookBlockerBitmasks[i].Select(x => (x * magic) >> shiftFound).ToArray();
 
-                    Console.WriteLine($"{i}: {shiftFound}, {magic}");
+                    Console.WriteLine($"{i}, {shiftFound}, {magic}");
                     maxLocal += 1;
                 }
             });
