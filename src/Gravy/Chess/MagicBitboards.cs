@@ -41,6 +41,11 @@ namespace Gravy.GravyChess
 
             Random random = new Random();
 
+            Console.CancelKeyPress += delegate {
+                Console.WriteLine("Magics: {0}", string.Join(", ", rookMagics));
+                Console.WriteLine("Shifts: {0}", string.Join(", ", rookShifts));
+            };
+
             Parallel.For(0, 63, i =>
             {
                 int maxLocal = max;
