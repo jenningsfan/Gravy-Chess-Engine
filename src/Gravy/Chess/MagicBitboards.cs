@@ -28,7 +28,11 @@ namespace Gravy.GravyChess
 
         public static void GenerateRookMagics(int max = 47)
         {
-            bool IsUnique(IEnumerable<ulong> bitboards) { return bitboards.Distinct().Count() == bitboards.Count(); }
+            bool IsUnique(IEnumerable<ulong> bitboards) {
+                // https://stackoverflow.com/questions/18303897/test-if-all-values-in-a-list-are-unique
+                HashSet<ulong> diffChecker = new();
+                return bitboards.All(diffChecker.Add);
+            }
 
             ulong[][] rookLookup = new ulong[64][];
 
@@ -39,34 +43,35 @@ namespace Gravy.GravyChess
 
             Parallel.For(0, 63, i =>
             {
-                ulong magic = 0;
-                int shiftFound = 0;
+                int maxLocal = max;
 
-                while (shiftFound == 0)
+                while (true)
                 {
-                    magic = (ulong)random.NextInt64();   // create instance
+                    ulong magic = 0;
+                    int shiftFound = 0;
 
-                    for (int shift = 63; shift > max; shift--)
+                    while (shiftFound == 0)
                     {
-                        if (IsUnique(rookBlockerBitmasks[i].Select(x => (x * magic) >> shift)))
+                        magic = (ulong)random.NextInt64();   // create instance
+
+                        for (int shift = 63; shift > maxLocal; shift--)
                         {
-                            shiftFound = shift;
+                            if (IsUnique(rookBlockerBitmasks[i].Select(x => (x * magic) >> shift)))
+                            {
+                                shiftFound = shift;
+                            }
                         }
                     }
+
+                    rookMagics[i] = magic;
+                    rookShifts[i] = shiftFound;
+
+                    rookLookup[i] = rookBlockerBitmasks[i].Select(x => (x * magic) >> shiftFound).ToArray();
+
+                    Console.WriteLine($"{i}: {shiftFound}, {magic}");
+                    maxLocal += 1;
                 }
-
-                rookMagics[i] = magic;
-                rookShifts[i] = shiftFound;
-
-                rookLookup[i] = rookBlockerBitmasks[i].Select(x => (x * magic) >> shiftFound).ToArray();
-
-                Console.WriteLine($"{i}: {shiftFound}, {magic}");
             });
-
-            while (true)
-            {
-                GenerateRookMagics(max + 1);
-            }
         }
 
         private static Dictionary<(int, ulong), ulong> GenerateRookLookup()
@@ -97,7 +102,7 @@ namespace Gravy.GravyChess
                 }
 
                 return false;
-            } 
+            }
 
             for (int i = square + 1; i < (square / 8) * 8 + 8; i++)
             {
