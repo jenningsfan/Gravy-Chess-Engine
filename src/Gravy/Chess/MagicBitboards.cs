@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,16 +13,11 @@ namespace Gravy.GravyChess
     {
         public static ulong[] rookMovemasks;
         public static ulong[][] rookBlockerBitmasks;
-        public static Dictionary<(int, ulong), ulong> rookLookup;
+        public static ulong[][] rookLookup;
 
         public static ulong[] rookMagics = new ulong[] { 6302813242384170221, 5742673882911820088, 8103471518102492298, 5734081564827947961, 8133547980671227035, 6093374702486619280, 4613095546263609464, 5679040094644847128, 4764642141007754339, 478193962044271057, 1620869994536952545, 1279740764825841811, 7247126610875058480, 6109102119361894428, 1094970162217252233, 46726669191978088, 7902599288076368093, 4847479427210040796, 3506932468554891120, 1020984679073937488, 6285920083561092756, 7670357973234742752, 5912008052659263128, 8430328281526010923, 7008723023808468578, 335205079719479138, 7263996334238680442, 1493101562418572851, 2090315856632185431, 8267251524589817568, 1450326257323491074, 3420245881310675913, 1972209083367818562, 6732747837839644300, 6469529381327867184, 3071094364859406026, 4760676533121531616, 7224694299914404235, 8066105464762415190, 6257418805721172325, 4357268100719362049, 842720436676245924, 5643457919961793035, 7594832747636790004, 6264772759994102346, 3257791587822993412, 3869032301546700808, 6135949450851516455, 3215292645937285632, 6583058775242815256, 7474291688865866240, 836141212232073728, 5063760697986002945, 4277595246031477531, 3036710063851414528, 1541895527254213778, 1754400546720073234, 5251479176361694722, 4307414596289421313, 635757485424132130, 6532723571648446838, 6586888392247611298, 2541049080768895516, 47902990073506370  };
         public static int[] rookShifts = new int[] { 50, 52, 51, 52, 51, 52, 52, 51, 52, 53, 53, 53, 53, 53, 53, 52, 52, 53, 53, 53, 53, 53, 54, 52, 52, 53, 53, 53, 53, 53, 54, 53, 52, 53, 53, 53, 53, 53, 54, 52, 52, 53, 53, 53, 53, 53, 54, 53, 53, 53, 54, 54, 53, 53, 54, 52, 52, 53, 53, 53, 52, 52, 53, 52  };
 
-
-        // when returning back to this project
-        // change rookLookup to use the magics and shifts
-        // add bishops
-        // https://youtu.be/_vqlIPDR2TU
         static MagicBitboards()
         {
             InitRookMoveGeneration();
@@ -87,15 +83,18 @@ namespace Gravy.GravyChess
             });
         }
 
-        private static Dictionary<(int, ulong), ulong> GenerateRookLookup()
+        private static ulong[][] GenerateRookLookup()
         {
-            Dictionary<(int, ulong), ulong> rookLookup = new();
+            ulong[][] rookLookup = new ulong[64][];
 
             for (int i = 0; i < 64; i++)
             {
+                rookLookup[i] = new ulong[1 << rookShifts[i]];
+
                 foreach (ulong blockerMask in rookBlockerBitmasks[i])
                 {
-                    rookLookup.Add((i, blockerMask), GenerateRookLegalBitboard(blockerMask, i));
+                    ulong key = (blockerMask * rookMagics[i]) >> rookShifts[i];
+                    rookLookup[i][key] = GenerateRookLegalBitboard(blockerMask, i);
                 }
             }
 

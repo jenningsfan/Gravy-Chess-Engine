@@ -94,8 +94,8 @@ namespace Gravy.GravyChess
             ulong pieceBitboard = friendly | enemy;
             ulong blockerBitboard = pieceBitboard & MagicBitboards.rookMovemasks[fromSquare];
 
-            (int, ulong) key = (fromSquare, blockerBitboard);
-            ulong movemask = MagicBitboards.rookLookup[key];
+            ulong key = (blockerBitboard * MagicBitboards.rookMagics[fromSquare]) >> MagicBitboards.rookShifts[fromSquare];
+            ulong movemask = MagicBitboards.rookLookup[fromSquare][key];
             movemask &= ~friendly;
 
             return GenerateMovesFromBitboard(piece, fromSquare, movemask);
